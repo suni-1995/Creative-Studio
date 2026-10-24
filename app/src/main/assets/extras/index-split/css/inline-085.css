@@ -1,0 +1,5 @@
+
+body.studioDetail #studioBottomNav{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+#studioBottomNav>button[data-studio-project-trash]{color:#dc626b!important}
+#studioBottomNav>button[data-studio-project-trash] .studioNavIcon{color:#dc626b!important}
+body.studioProjectMusicContext #music{background:linear-gradient(180deg,color-mix(in srgb,var(--studio-project-music-color,var(--theme)) 10%,transparent),transparent 250px);border-radius:20px}
