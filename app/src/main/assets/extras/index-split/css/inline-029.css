@@ -1,0 +1,8 @@
+
+#modal.centerShort{
+  align-items:center!important;
+}
+/* 화면을 넘는 긴 창은 위에서 시작하고, 창 자체만 스크롤합니다. */
+#modal:not(.centerShort){
+  align-items:flex-start!important;
+}
