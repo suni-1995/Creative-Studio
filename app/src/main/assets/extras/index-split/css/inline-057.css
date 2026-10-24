@@ -1,5 +1,0 @@
-
-body.studioDetail #studioBottomNav{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important}
-body.studioDetail .wrap{padding-bottom:94px!important}
-body.studioDetail:has(#modal:not(.hidden)) #studioBottomNav{z-index:20!important}
-#studioBottomNav>button[data-studio-project-backup] .studioNavIcon{font-size:22px}

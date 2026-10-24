@@ -1,4 +1,0 @@
-
-/* 첫 이미지는 메타정보 뒤 남은 첫 페이지 공간에도 들어갈 수 있게 조금 낮게 제한 */
-.fix27CwPdfImage:first-of-type img{max-height:165mm!important}
-.fix27CwPdfImage:first-of-type{margin-top:12px!important}

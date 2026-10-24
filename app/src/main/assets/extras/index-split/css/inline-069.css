@@ -1,5 +1,0 @@
-
-#musicSelectionDock:not(:empty){
-  width:calc(100vw - 56px)!important;
-  max-width:600px!important;
-}

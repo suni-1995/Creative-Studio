@@ -1,7 +1,0 @@
-
-/* Keep the final workspace card (including its trash action) above the fixed navigation. */
-body.studioDetail #projectView.studioHubLanding,
-body.studioDetail #projectView.studioWorkspaceDetail {
-  padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)) !important;
-  box-sizing: border-box;
-}
