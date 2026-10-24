@@ -1,0 +1,68 @@
+#studioToolbox{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.stxHead{display:flex;align-items:center;gap:10px;margin:4px 0 16px}.stxHead button{flex:0 0 auto}.stxHeadText{min-width:0}.stxHead h2{margin:0;font-size:21px}.stxHead p{margin:3px 0 0;color:var(--muted);font-size:12px}.stxCards{display:grid;gap:11px}.stxCard{display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:12px;padding:15px;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow);cursor:pointer}.stxIcon{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--theme) 10%,var(--soft));font-size:22px}.stxCard b{display:block;font-size:15px}.stxCard small{color:var(--muted);font-size:11px}.stxPanel{display:grid;gap:12px}.stxBox{padding:13px;border:1px solid var(--line);border-radius:15px;background:var(--card);box-shadow:var(--shadow)}.stxRows{display:grid;gap:8px}.stxRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 38px;gap:7px;align-items:center}.stxRow.height{grid-template-columns:minmax(0,1fr) 100px 38px}.stxRow input{min-width:0;width:100%;box-sizing:border-box}.stxRow button{min-width:0;padding:9px 5px}.stxActions{display:flex;gap:8px;flex-wrap:wrap}.stxActions button{flex:1 1 120px}.stxNote{font-size:11px;color:var(--muted);line-height:1.55}.stxError{color:#d84b58;font-size:12px;font-weight:700}.stxLadderWrap{width:100%;overflow-x:auto;padding-bottom:5px}.stxLadder{min-width:520px;width:100%;height:390px;display:block}.stxLadder .rail,.stxLadder .rung{stroke:color-mix(in srgb,var(--ink) 42%,transparent);stroke-width:2}.stxLadder .route{fill:none;stroke:var(--theme);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px color-mix(in srgb,var(--theme) 30%,transparent))}.stxLadder .label{fill:var(--ink);font:700 12px system-ui,sans-serif;text-anchor:middle}.stxLadder .result{fill:var(--muted);font:700 12px system-ui,sans-serif;text-anchor:middle}.stxParticipantBtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.stxParticipantBtns button.done{opacity:.58}.stxAllResults{display:grid;gap:7px}.stxResultRow{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:10px;background:var(--soft)}
+.stxHeightScroll{overflow-x:auto;width:100%;padding:8px 0 2px}.stxHeightStage{position:relative;display:flex;align-items:flex-end;gap:18px;min-width:max-content;height:390px;padding:24px 16px 42px;border-bottom:2px solid var(--line);box-sizing:border-box}.stxPerson{width:72px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;flex:0 0 72px}.stxHuman{width:52px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}.stxHumanHead{width:28%;aspect-ratio:1;border-radius:50%;background:var(--theme)}.stxHumanBody{width:43%;height:48%;margin-top:3%;border-radius:45% 45% 20% 20%;background:var(--theme);position:relative}.stxHumanBody:before,.stxHumanBody:after{content:'';position:absolute;top:6%;width:22%;height:74%;border-radius:999px;background:var(--theme)}.stxHumanBody:before{right:100%;transform:rotate(5deg);transform-origin:top}.stxHumanBody:after{left:100%;transform:rotate(-5deg);transform-origin:top}.stxHumanLegs{width:42%;height:34%;display:flex;gap:16%;justify-content:center}.stxHumanLegs i{display:block;width:38%;height:100%;border-radius:0 0 999px 999px;background:var(--theme)}.stxPersonLabel{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);width:100px;text-align:center;font-size:11px;line-height:1.35}.stxPersonLabel b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stxHeightEmpty{text-align:center;color:var(--muted);padding:40px 10px}
+.stxRandomGrid{display:grid;gap:9px}.stxRandomItem{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:8px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:13px;background:var(--card)}.stxRandomName{font-weight:800;font-size:12px}.stxRandomValue{min-width:0;word-break:keep-all}.stxLock{width:38px!important;min-width:38px!important;padding:8px 0!important}.stxLock.locked{background:color-mix(in srgb,var(--theme) 13%,var(--card));border-color:var(--theme)}
+.stxTypingTarget{font-size:17px;line-height:1.8;word-break:break-word;padding:14px;border-radius:13px;background:var(--soft)}.stxTypingTarget .ok{color:var(--theme);font-weight:800}.stxTypingTarget .bad{color:#d84b58;background:color-mix(in srgb,#d84b58 10%,transparent);text-decoration:underline}.stxTypingTarget .cursor{border-left:2px solid var(--theme);animation:stxBlink 1s steps(1) infinite}@keyframes stxBlink{50%{border-color:transparent}}.stxTypingInput{width:100%;min-height:120px;resize:vertical;box-sizing:border-box}.stxTypingStats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stxStat{padding:11px;border-radius:12px;background:var(--soft);text-align:center}.stxStat b{display:block;font-size:18px}.stxStat small{color:var(--muted)}
+.studioExtrasGroup{border-color:color-mix(in srgb,var(--theme) 22%,var(--line))!important}.studioExtrasGroup h3{color:var(--theme)!important}.studioExtrasGroup button .studioExtraIcon{display:inline-grid;width:24px;text-align:center;margin-right:4px}.studioExtrasGroup button>span:last-child{margin-left:auto}.studioPastimeNotice{padding:28px 14px;text-align:center;color:var(--muted)}
+@media(min-width:700px){.stxCards{grid-template-columns:1fr 1fr}.stxParticipantBtns{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.stxLadder .route,.stxTypingTarget .cursor{animation:none!important;transition:none!important}}
+
+/* v45 mobile containment */
+#studioToolbox{width:100%;max-width:100%;box-sizing:border-box;overflow-x:hidden}
+#studioToolbox .stxBox,#studioToolbox .stxPanel{min-width:0;max-width:100%;box-sizing:border-box}
+#studioToolbox .stxRow{width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px}
+#studioToolbox .stxLadderWrap{overflow-x:hidden}
+#studioToolbox .stxLadder{min-width:0;width:100%;height:auto;aspect-ratio:1.25/1}
+#studioToolbox .stxParticipantBtns{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px}
+#studioToolbox .stxParticipantBtns button{flex:1 0 auto;min-width:64px}
+#studioToolbox .stxHeightScroll{display:block;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain}
+#studioToolbox .stxHeightStage{width:max-content;min-width:100%;max-width:none}
+#studioToolbox .stxHumanBody{width:48%;height:46%;border-radius:48% 48% 32% 32%}
+#studioToolbox .stxHumanBody:before,#studioToolbox .stxHumanBody:after{width:19%;height:68%;top:10%}
+#studioToolbox .stxHumanLegs{width:44%;height:34%;gap:12%}
+#studioToolbox .stxHumanLegs i{width:42%;border-radius:0 0 45% 45%}
+#studioToolbox .stxTypingInput{margin-top:16px}
+#studioToolbox.stxShortTool{min-height:calc(100vh - var(--studio-bottom-nav-clearance,88px) - 30px);display:flex;flex-direction:column;justify-content:center}
+
+
+/* v46 refinement: persistent ladder routes, compact random draw, neutral silhouette */
+#studioToolbox .stxLadder .route.shown{opacity:.92;filter:none}
+#studioToolbox .stxHuman{width:58px;justify-content:flex-end}
+#studioToolbox .stxHumanHead{width:31%;flex:0 0 auto;margin-bottom:4%;border-radius:50%}
+#studioToolbox .stxHumanBody{width:72%;height:82%;margin:0;border-radius:0;clip-path:polygon(23% 0,77% 0,90% 9%,96% 38%,82% 41%,72% 28%,68% 100%,32% 100%,28% 28%,18% 41%,4% 38%,10% 9%);background:var(--theme)}
+#studioToolbox .stxHumanBody:before,#studioToolbox .stxHumanBody:after{display:none}
+#studioToolbox .stxHumanLegs{display:none}
+#studioToolbox.stxCompactRandom .stxPanel{gap:6px}
+#studioToolbox.stxCompactRandom .stxBox{padding:9px}
+#studioToolbox.stxCompactRandom .stxRandomGrid{gap:5px}
+#studioToolbox.stxCompactRandom .stxRandomItem{grid-template-columns:58px minmax(0,1fr) 34px 34px;gap:5px;padding:7px 8px;min-height:42px;border-radius:10px}
+#studioToolbox.stxCompactRandom .stxRandomName{font-size:11px}
+#studioToolbox.stxCompactRandom .stxRandomValue{font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#studioToolbox.stxCompactRandom .stxLock,#studioToolbox.stxCompactRandom .stxRerollOne{width:34px!important;min-width:34px!important;height:34px;padding:0!important}
+#studioToolbox.stxCompactRandom .stxActions{margin-top:7px!important}
+#studioToolbox.stxCompactRandom .stxActions button{padding:9px 6px}
+#studioToolbox.stxShortTool{justify-content:flex-start}
+#studioToolbox.stxShortTool>.stxHead{flex:0 0 auto}
+#studioToolbox.stxShortTool>.stxPanel{flex:1 1 auto;display:flex;align-items:center}
+#studioToolbox.stxShortTool>.stxPanel>.stxBox{width:100%}
+
+/* v47: softer neutral comparison silhouette */
+#studioToolbox .stxHuman{width:60px}
+#studioToolbox .stxHumanHead{width:31%;margin-bottom:5%;border-radius:50%}
+#studioToolbox .stxHumanBody{width:72%;height:82%;margin:0;background:var(--theme);border-radius:42% 42% 28% 28%;clip-path:none;position:relative}
+#studioToolbox .stxHumanBody:before,#studioToolbox .stxHumanBody:after{content:'';display:block;position:absolute;top:9%;width:20%;height:60%;background:var(--theme);border-radius:999px;transform-origin:top}
+#studioToolbox .stxHumanBody:before{right:91%;transform:rotate(5deg)}
+#studioToolbox .stxHumanBody:after{left:91%;transform:rotate(-5deg)}
+#studioToolbox .stxHumanLegs{display:flex;width:43%;height:34%;gap:12%;justify-content:center;margin-top:-1px}
+#studioToolbox .stxHumanLegs i{display:block;width:44%;height:100%;background:var(--theme);border-radius:0 0 999px 999px}
+
+/* v48: use one smooth neutral illustration asset for proportional height comparison */
+#studioToolbox .stxHuman{width:64px;display:block;background:var(--theme);-webkit-mask:url('/extras/toolbox/neutral-person.svg') center bottom/contain no-repeat;mask:url('/extras/toolbox/neutral-person.svg') center bottom/contain no-repeat}
+#studioToolbox .stxHumanHead,#studioToolbox .stxHumanBody,#studioToolbox .stxHumanLegs{display:none!important}
+
+/* v49: silhouette width scales with height so the SVG mask is never width-limited */
+#studioToolbox .stxHuman{max-width:none!important;flex:0 0 auto!important}
+#studioToolbox .stxPerson{width:104px;flex-basis:104px}
+/* v52: random results always show the complete text */
+#studioToolbox.stxCompactRandom .stxRandomItem{align-items:start!important;min-height:42px!important;height:auto!important}
+#studioToolbox.stxCompactRandom .stxRandomValue{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:keep-all!important;overflow-wrap:anywhere!important;line-height:1.4!important;padding-top:4px}

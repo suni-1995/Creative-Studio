@@ -1,0 +1,92 @@
+#studioBreakroom .bd-shell{display:grid;gap:10px}#studioBreakroom .bd-top{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start}#studioBreakroom .bd-stage{position:relative;width:min(82vw,320px);aspect-ratio:1/2;margin:auto;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--soft) 88%,#111);touch-action:none}#studioBreakroom .bd-grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(20,1fr)}#studioBreakroom .bd-cell{border:1px solid color-mix(in srgb,var(--line) 38%,transparent);transition:transform .07s ease,opacity .12s ease,filter .12s ease}#studioBreakroom .bd-cell.on{background:color-mix(in srgb,var(--theme) 68%,#7db9ff);border-color:color-mix(in srgb,var(--theme) 50%,#fff);box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}#studioBreakroom .bd-cell.clear{animation:bdClear .18s ease both}@keyframes bdClear{50%{filter:brightness(1.8);transform:scaleY(.7)}100%{opacity:0;transform:scaleY(.15)}}#studioBreakroom .bd-next{width:72px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--card);text-align:center;font-size:10px;color:var(--muted)}#studioBreakroom .bd-nextGrid{display:grid;grid-template-columns:repeat(4,12px);grid-template-rows:repeat(4,12px);gap:2px;justify-content:center;margin-top:6px}#studioBreakroom .bd-mini.on{background:var(--theme);border-radius:2px}#studioBreakroom .bd-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}#studioBreakroom .bd-controls button{min-width:0;padding:13px 4px;font-size:18px}#studioBreakroom .bd-sound{font-size:12px;padding:8px 10px}#studioBreakroom .bd-overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,12,18,.64);z-index:3;color:white;text-align:center;padding:16px}.bd-overlay>div{font-weight:850;font-size:21px}.bd-overlay button{display:block;margin-top:10px;width:100%}
+
+/* v45 phone fit + gamepad layout */
+#studioBreakroom .bd-shell{max-width:100%;overflow:hidden}
+#studioBreakroom .bd-top{grid-template-columns:minmax(0,1fr) 58px;width:100%;max-width:100%}
+#studioBreakroom .bd-stage{width:min(100%,300px);max-height:58vh}
+#studioBreakroom .bd-next{width:58px;box-sizing:border-box;padding:6px 2px}
+#studioBreakroom .bd-controls{display:grid;grid-template-columns:minmax(86px,.8fr) minmax(0,1.8fr);gap:12px;align-items:end}
+#studioBreakroom .bd-rotate{height:64px}
+#studioBreakroom .bd-arrows{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#studioBreakroom .bd-arrows button{height:64px}
+
+/* v46: keep 10x20 cells square and use a gamepad-like control cluster */
+#studioBreakroom .bd-stage{width:min(100%,300px);max-height:none;aspect-ratio:1/2}
+#studioBreakroom .bd-controls{grid-template-columns:92px minmax(0,1fr);gap:18px;align-items:center;max-width:390px;margin:0 auto;width:100%}
+#studioBreakroom .bd-rotate{width:78px;height:78px;border-radius:50%;justify-self:center;padding:0}
+#studioBreakroom .bd-arrows{position:relative;display:grid;grid-template-columns:repeat(3,62px);grid-template-rows:62px;justify-content:end;gap:4px}
+#studioBreakroom .bd-arrows button{width:62px;height:62px;border-radius:16px;padding:0;font-size:24px;box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--ink) 12%,transparent)}
+#studioBreakroom .bd-controls button:active{transform:translateY(2px);box-shadow:none}
+
+/* v46: square board cells and gamepad controls */
+#studioBreakroom .bd-stage{width:min(100%,300px);max-height:none;aspect-ratio:1/2}
+#studioBreakroom .bd-controls{grid-template-columns:92px minmax(0,1fr);gap:18px;align-items:center;max-width:390px;margin:0 auto;width:100%}
+#studioBreakroom .bd-rotate{width:78px;height:78px;border-radius:50%;justify-self:center;padding:0}
+#studioBreakroom .bd-arrows{display:grid;grid-template-columns:repeat(3,62px);gap:4px;justify-content:end}
+#studioBreakroom .bd-arrows button{width:62px;height:62px;border-radius:16px;padding:0;font-size:24px;box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--ink) 12%,transparent)}
+#studioBreakroom .bd-controls button:active{transform:translateY(2px);box-shadow:none}
+
+/* v47: centered stats + split gamepad */
+#studioBreakroom .bd-shell>.brStats{justify-content:center;align-items:center}
+#studioBreakroom .bd-shell>.brStats .brPill{min-width:58px;text-align:center}
+#studioBreakroom .bd-shell>.brStats .bd-sound{margin-left:4px}
+#studioBreakroom .bd-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:center;max-width:360px}
+#studioBreakroom .bd-dpad{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:58px 58px;gap:5px;justify-content:start}
+#studioBreakroom .bd-dpad [data-bd="left"]{grid-column:1;grid-row:2}
+#studioBreakroom .bd-dpad [data-bd="down"]{grid-column:2;grid-row:2}
+#studioBreakroom .bd-dpad [data-bd="right"]{grid-column:3;grid-row:2}
+#studioBreakroom .bd-actions{display:grid;grid-template-columns:repeat(2,68px);gap:8px;justify-content:end}
+#studioBreakroom .bd-controls .bd-key{height:62px;border-radius:18px;padding:4px;font-size:22px;box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--ink) 12%,transparent)}
+#studioBreakroom .bd-actions .bd-key{height:68px;border-radius:50%}
+#studioBreakroom .bd-key small{display:block;font-size:9px;margin-top:2px}
+@media(max-width:390px){#studioBreakroom .bd-controls{gap:12px}.bd-dpad{transform:scale(.92);transform-origin:left center}}
+
+/* v48: compact header and keep the whole gamepad visible above phone navigation */
+#studioBreakroom .bd-shell{gap:8px;padding-bottom:8px}
+#studioBreakroom .bd-shell>.brStats{display:flex;justify-content:center;gap:7px;flex-wrap:nowrap;margin:0 auto 2px;width:100%}
+#studioBreakroom .bd-shell>.brStats .brPill{min-width:0;padding:8px 11px;white-space:nowrap}
+#studioBreakroom .bd-shell>.brStats .bd-sound{margin-left:2px;white-space:nowrap}
+#studioBreakroom .bd-stage{width:min(100%,278px)}
+#studioBreakroom .bd-controls{grid-template-columns:174px 150px;justify-content:space-between;gap:10px;max-width:344px;margin:2px auto 0}
+#studioBreakroom .bd-dpad{grid-template-columns:repeat(3,54px);grid-template-rows:44px 54px;gap:5px}
+#studioBreakroom .bd-controls .bd-key{height:54px}
+#studioBreakroom .bd-actions{grid-template-columns:repeat(2,64px);gap:8px}
+#studioBreakroom .bd-actions .bd-key{height:64px}
+@media(max-width:390px){#studioBreakroom .bd-controls{grid-template-columns:160px 138px;max-width:310px;gap:8px}#studioBreakroom .bd-dpad{grid-template-columns:repeat(3,50px);grid-template-rows:38px 50px;transform:none}#studioBreakroom .bd-controls .bd-key{width:50px;height:50px}#studioBreakroom .bd-actions{grid-template-columns:repeat(2,60px)}#studioBreakroom .bd-actions .bd-key{width:60px;height:60px}}
+/* v51: two controls per side, no bottom-direction button */
+#studioBreakroom .bd-controls{grid-template-columns:128px 148px!important;justify-content:space-between!important;align-items:center!important;max-width:330px!important;margin:6px auto 0!important;gap:18px!important}
+#studioBreakroom .bd-dpad{display:grid!important;grid-template-columns:repeat(2,60px)!important;grid-template-rows:60px!important;gap:8px!important;justify-content:start!important;transform:none!important}
+#studioBreakroom .bd-dpad [data-bd="left"]{grid-column:1!important;grid-row:1!important}
+#studioBreakroom .bd-dpad [data-bd="right"]{grid-column:2!important;grid-row:1!important}
+#studioBreakroom .bd-dpad [data-bd="down"]{display:none!important}
+#studioBreakroom .bd-dpad .bd-key{width:60px!important;height:60px!important;border-radius:16px!important}
+#studioBreakroom .bd-actions{display:grid!important;grid-template-columns:repeat(2,68px)!important;gap:10px!important;justify-content:end!important}
+#studioBreakroom .bd-actions .bd-key{width:68px!important;height:68px!important;border-radius:50%!important}
+@media(max-width:390px){#studioBreakroom .bd-controls{grid-template-columns:116px 132px!important;max-width:286px!important;gap:12px!important}#studioBreakroom .bd-dpad{grid-template-columns:repeat(2,54px)!important;grid-template-rows:54px!important}#studioBreakroom .bd-dpad .bd-key{width:54px!important;height:54px!important}#studioBreakroom .bd-actions{grid-template-columns:repeat(2,62px)!important}#studioBreakroom .bd-actions .bd-key{width:62px!important;height:62px!important}}
+/* v52: center every next-piece footprint inside the 4x4 preview */
+#studioBreakroom .bd-nextGrid{position:relative!important;display:block!important;width:54px!important;height:54px!important;margin:6px auto 0!important}
+#studioBreakroom .bd-nextGrid .bd-mini{position:absolute;width:12px;height:12px}
+
+/* v55: keep the Block Drop playfield composition phone-sized on wide/tablet screens. */
+#studioBreakroom .bd-top{
+  grid-template-columns:minmax(0,278px) 58px!important;
+  width:min(100%,344px)!important;
+  max-width:344px!important;
+  margin:0 auto!important;
+  justify-content:center!important;
+  align-items:start!important;
+  gap:8px!important;
+}
+#studioBreakroom .bd-stage{
+  width:278px!important;
+  max-width:100%!important;
+  margin:0!important;
+}
+@media(max-width:370px){
+  #studioBreakroom .bd-top{
+    grid-template-columns:minmax(0,1fr) 58px!important;
+    width:100%!important;
+    max-width:344px!important;
+  }
+  #studioBreakroom .bd-stage{width:100%!important}
+}
