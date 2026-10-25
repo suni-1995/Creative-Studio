@@ -6338,11 +6338,21 @@ body.bulkSelecting .memoListCompact .memoCardCompact.bulkSelected > .meta{
         if(!map.has(key)){ const meta=storyFolderMeta(x.folderId); map.set(key,{title:meta.name,linkedIds:meta.linkedIds||[],externalLinks:meta.externalLinks||[],items:[],color:meta.color||'yellow'}); }
         map.get(key).items.push(x);
       }
+      const sortMode=document.getElementById('storiesSort')?.value||'latest';
+      const project=(db.projects||[]).find(p=>p.id===currentProjectId);
+      const savedOrder=project?.categoryGroupOrder?.stories||[];
+      const folderRank=key=>savedOrder.indexOf(key==='__none'?'__none':'g:'+key);
+      const folderStamp=(key,data)=>{const f=allFolders.find(x=>x.id===key);return Number(f?.updated||f?.created||Math.max(0,...data.items.map(x=>Number(x.updated||x.created||0))))};
       const order=[...map.entries()].sort((a,b)=>{
-        const ap=a[0]==='__none'?1:0,bp=b[0]==='__none'?1:0;
-        if(ap!==bp) return ap-bp;
+        if(sortMode==='manual'){const ai=folderRank(a[0]),bi=folderRank(b[0]);if(ai!==bi)return (ai<0?1e9:ai)-(bi<0?1e9:bi)}
+        if(sortMode==='latest'||sortMode==='oldest'){const diff=folderStamp(a[0],a[1])-folderStamp(b[0],b[1]);if(diff)return sortMode==='latest'?-diff:diff}
         return a[1].title.localeCompare(b[1].title,'ko');
       });
+      for(const [,data] of order){
+        if(sortMode==='manual')data.items.sort((a,b)=>Number(a.displayOrder??1e9)-Number(b.displayOrder??1e9));
+        else if(sortMode==='latest'||sortMode==='oldest')data.items.sort((a,b)=>sortMode==='latest'?Number(b.updated||b.created||0)-Number(a.updated||a.created||0):Number(a.updated||a.created||0)-Number(b.updated||b.created||0));
+        else if(sortMode==='name')data.items.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||''),'ko'));
+      }
       const panels=[];
       for(const [key,data] of order){
         const rows=[];
