@@ -14051,7 +14051,7 @@ body.bulkSelecting .subsec:not(.hidden){
       const folders=document.createElement('div');folders.className='projectFolderCollection';
       for(const f of db.projectFolders){
         const arr=grouped.filter(p=>p.projectFolderId===f.id);
-        const d=document.createElement('details');d.className='projectFolderBlock';d.open=true;
+        const d=document.createElement('details');d.className='projectFolderBlock';
         d.style.setProperty('--folderColor',f.color||'var(--theme)');
         d.innerHTML='<summary><span class="projectFolderName"></span><span class="projectFolderCount">'+arr.length+'개</span></summary><div class="projectFolderItems"></div>';
         d.querySelector('.projectFolderName').textContent=f.name;
