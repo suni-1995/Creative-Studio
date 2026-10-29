@@ -11493,7 +11493,7 @@ function renderMore(){const mode=document.documentElement.dataset.mode==='dark'?
 function switchTo(page){if(page==='create'){openCreate();return}if(currentProjectId&&!['projects','music','backup'].includes(page)&&typeof closeProject==='function')closeProject();active=page;for(const sec of document.querySelectorAll('.tabsec'))sec.classList.add('hidden');const target={home:home,projects:projectSection,music:document.getElementById('music'),more:more,backup:document.getElementById('backupTrash')}[page];target?.classList.remove('hidden');document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===(page==='backup'?'backupTrash':page)));nav.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.studioNav===(page==='backup'?'more':page)));document.body.classList.toggle('studioDetail',!!currentProjectId&&page==='projects');if(page==='home')renderHome();if(page==='projects'&&!currentProjectId)renderProjects();if(page==='more')renderMore();if(page==='music'&&typeof refreshMusicLibrary==='function')refreshMusicLibrary(false);window.scrollTo(0,0)}
 function openCreate(){if(currentProjectId&&active==='projects'){const items=[...document.querySelectorAll('#projectView .subtabs button:not(.hidden)')].filter(b=>b.dataset.subtab!=='recent');if(items.length){openModal(`<div class="stack"><h2>새 항목 만들기</h2>${items.map(b=>`<button type="button" data-studio-create="${safe(b.dataset.subtab)}">${safe(b.textContent)}</button>`).join('')}<button onclick="closeModal()">취소</button></div>`);return}}newProject()}
 // Workspace hosts are temporarily placed in the hub without cloning their live controls.
-const workspaceHosts={quickMemos:'projectQuickMemos',ledger:'projectQuickMemos',memo:'projectQuickMemos',sns:'projectRecent'};
+const workspaceHosts={quickMemos:'projectQuickMemos',ledger:'projectQuickMemos',memo:'projectQuickMemos',sns:'projectRecent',diary:'projectCalendar'};
 let embeddedHost=null,embeddedAnchor=null,quickMemoExpanded=false;
 function restoreWorkspaceHost(){
  if(!embeddedHost)return;
@@ -11516,6 +11516,8 @@ function embedWorkspaceHost(type){
    renderMemoProject();
  }else if(type==='sns'){
    renderSnsProject();
+ }else if(type==='diary'){
+   renderDiaryCalendar();
  }
 }
 function updateQuickMemoExpansion(){
@@ -11532,7 +11534,7 @@ async function renderHub(){
  const buttons=[...document.querySelectorAll('#projectView .subtabs button:not(.hidden)')].filter(b=>b.dataset.subtab!=='recent'||['sns','ledger'].includes(p.projectType));
  const labels={quickMemos:'빠른 메모',diaries:'일기',pictureDiaries:'그림일기',calendar:'캘린더',settings:'설정 문서',characters:'캐릭터',relations:'관계도',images:'이미지',videos:'동영상',sources:'소스파일',stories:'썰 / 장문',serials:'연재본',timeline:'타임라인',creativeWorks:'창작물',recent:'SNS 기록'};
  const icons={quickMemos:'▤',diaries:'✎',pictureDiaries:'▧',calendar:'▦',settings:'▤',characters:'♙',relations:'♧',images:'▧',videos:'▷',sources:'▣',stories:'✒',serials:'▥',timeline:'◷',creativeWorks:'✦',recent:'✎'};
- const direct=p.projectType==='memo'?'memo':p.projectType==='sns'?'sns':null;
+ const direct=p.projectType==='memo'?'memo':p.projectType==='sns'?'sns':p.projectType==='diary'?'diary':null;
  const ledgerQuick=p.projectType==='ledger'&&buttons.some(b=>b.dataset.subtab==='quickMemos');
  const showQuick=['advanced','general','fanwork','long'].includes(p.projectType)&&buttons.some(b=>b.dataset.subtab==='quickMemos');
  const groups=p.projectType==='ledger'?[['가계부 작업',['recent','calendar','settings']]]:[['문서 작업',['quickMemos','diaries','pictureDiaries','calendar','settings','stories','serials',...(p.projectType==='fanwork'?['creativeWorks']:[])]],[p.projectType==='diary'?'계획 구성':'세계관 구성',['characters','relations','timeline']],['자료 관리',['images','videos','sources']]];
