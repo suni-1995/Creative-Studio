@@ -11422,7 +11422,9 @@ body.bulkSelecting #serialsList .item.bulkSelected > .itemBody .snippet{
 #studioHome .studioMiniPlayer button{display:grid;place-items:center;box-sizing:border-box;width:34px;min-width:34px;max-width:34px;height:34px;min-height:34px;max-height:34px;aspect-ratio:1;flex:0 0 34px;padding:0;border-radius:50%;line-height:1;box-shadow:none}
 </style>
 <style id="musicSearchAndScrollFix">
-#music .musicPage{display:flex;flex-direction:column;height:calc(100dvh - 180px);min-height:300px;overflow:hidden}
+#music .musicPage{display:flex;flex-direction:column;height:calc(100dvh - 180px);min-height:300px;overflow:hidden;gap:12px}
+#music .musicListHead{flex-shrink:0}
+#music #musicList{display:flex;flex-direction:column;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 #music .musicHeaderBar,#music .musicListTools,#music #musicPermissionBox{flex-shrink:0}
 #music .musicListTools{display:flex;flex-wrap:nowrap;gap:7px;align-items:center;margin-bottom:9px}
 #music .musicListTools #musicSort{flex:0 0 28%;width:28%;min-width:0;padding-left:8px;padding-right:18px}
