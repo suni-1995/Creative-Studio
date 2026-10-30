@@ -27,6 +27,7 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
+import android.view.KeyEvent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -279,7 +280,33 @@ public class MusicPlaybackService extends Service {
 
     private void createMediaSession() {
         mediaSession = new MediaSession(this, "StoryhandMusic");
+        mediaSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
         mediaSession.setCallback(new MediaSession.Callback() {
+            @Override public boolean onMediaButtonEvent(Intent mediaButtonIntent) {
+                KeyEvent key = mediaButtonIntent == null ? null : mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                if (key == null) return super.onMediaButtonEvent(mediaButtonIntent);
+                if (key.getAction() != KeyEvent.ACTION_DOWN) return true;
+                switch (key.getKeyCode()) {
+                    case KeyEvent.KEYCODE_MEDIA_PLAY:
+                        resumePlayback();
+                        return true;
+                    case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                        pausePlayback();
+                        return true;
+                    case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                    case KeyEvent.KEYCODE_HEADSETPHOOK:
+                        if (isPlayingNow()) pausePlayback(); else resumePlayback();
+                        return true;
+                    case KeyEvent.KEYCODE_MEDIA_NEXT:
+                        playNext(false);
+                        return true;
+                    case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                        playPrevious();
+                        return true;
+                    default:
+                        return super.onMediaButtonEvent(mediaButtonIntent);
+                }
+            }
             @Override public void onPlay() { resumePlayback(); }
             @Override public void onPause() { pausePlayback(); }
             @Override public void onSkipToNext() { playNext(false); }
