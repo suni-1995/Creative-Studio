@@ -12393,6 +12393,10 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
 </body>
 </html>
 
+<!-- SNS editor must remain in workspace, never beneath project overview. -->
+<style id="snsOverviewIsolationFix">
+#projectView:has(#studioHubTabs [data-hub="overview"].active) #projectRecent{display:none!important}
+</style>
 <!-- ===== FIX29 ROUND1: SNS PROJECT MVP ===== -->
 <style id="fix29SnsStyles">
 .snsProjectShell{display:grid;gap:14px;max-width:860px;margin:0 auto}
