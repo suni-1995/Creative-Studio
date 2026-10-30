@@ -294,7 +294,7 @@ public class MusicPlaybackService extends Service {
                         pausePlayback();
                         return true;
                     case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                    case KeyEvent.KEYCODE_HEADSETPHOOK:
+                    case KeyEvent.KEYCODE_HEADSETHOOK:
                         if (isPlayingNow()) pausePlayback(); else resumePlayback();
                         return true;
                     case KeyEvent.KEYCODE_MEDIA_NEXT:
