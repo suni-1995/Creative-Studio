@@ -12389,11 +12389,7 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
 @media(max-height:700px){#studioBreakroom .shootWrap{height:calc(100dvh - 260px)!important;min-height:290px}}
 </style>
 
-<style id="musicScrollFinalOverride20261030">
-/* This must follow all legacy uiux music rules that add 190–316px padding. */
-#music .musicPage{padding-bottom:0!important}
-#music #musicList{min-height:0!important;overflow-y:auto!important;padding-bottom:220px!important}
-</style>
+
 </body>
 </html>
 
@@ -14989,3 +14985,27 @@ body.studioDetail #projectView.studioWorkspaceDetail{
 </style>
 
 <script src="/extras/lounge/game-sfx.js"></script>
+
+<style id="musicScrollActualFinalFix">
+/* Must be last: legacy styles below body previously overrode the earlier fix. */
+#music .musicPage{padding-bottom:0!important;overflow:hidden!important;min-height:0!important}
+#music #musicList{flex:1 1 0!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:220px!important;-webkit-overflow-scrolling:touch!important}
+#music #musicList>.musicTrack{flex-shrink:0!important}
+</style>
+<script id="musicScrollViewportFix">
+(function(){
+ function fitMusic(){
+  var page=document.querySelector('#music:not(.hidden) .musicPage');
+  if(!page)return;
+  var nav=document.querySelector('.bottomNav, #bottomNav, .studioBottomNav, .appBottomNav');
+  var bottom=nav&&nav.getBoundingClientRect().top>0?nav.getBoundingClientRect().top:window.innerHeight-88;
+  var top=page.getBoundingClientRect().top;
+  page.style.setProperty('height',Math.max(260,bottom-top-8)+'px','important');
+ }
+ window.addEventListener('resize',fitMusic);
+ document.addEventListener('click',function(){requestAnimationFrame(fitMusic)},true);
+ document.addEventListener('visibilitychange',fitMusic);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fitMusic);
+ else fitMusic();
+})();
+</script>
