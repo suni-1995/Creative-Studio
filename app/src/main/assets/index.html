@@ -11433,8 +11433,7 @@ body.bulkSelecting #serialsList .item.bulkSelected > .itemBody .snippet{
 #music .musicListTools>button{flex:0 0 auto;max-width:105px;padding:10px 8px;font-size:12px;white-space:nowrap}
 #music #musicList{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:12px}
 #music #musicSelectionDock{flex-shrink:0}
-/* The floating player is outside document flow. Do not reserve its height
-   on the flex page: that shrinks the song list to a few rows. */
+/* Override later legacy padding rules: the player is fixed, not in the page flow. */
 #music .musicPage{padding-bottom:0!important;box-sizing:border-box!important;height:calc(100dvh - var(--studio-bottom-nav-clearance,88px) - 22px)!important;min-height:0!important}
 #music #musicList{flex:1 1 0!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;box-sizing:border-box!important;padding-bottom:220px!important;-webkit-overflow-scrolling:touch}
 </style>
@@ -12388,6 +12387,12 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
 #studioBreakroom .shootWrap{width:100%!important;max-width:100%!important;height:min(58dvh,560px)!important;min-height:320px;box-sizing:border-box;overflow:hidden}
 #studioBreakroom #shootCanvas{display:block;width:100%!important;height:100%!important;max-width:100%!important}
 @media(max-height:700px){#studioBreakroom .shootWrap{height:calc(100dvh - 260px)!important;min-height:290px}}
+</style>
+
+<style id="musicScrollFinalOverride20261030">
+/* This must follow all legacy uiux music rules that add 190–316px padding. */
+#music .musicPage{padding-bottom:0!important}
+#music #musicList{min-height:0!important;overflow-y:auto!important;padding-bottom:220px!important}
 </style>
 </body>
 </html>
