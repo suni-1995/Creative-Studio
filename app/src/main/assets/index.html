@@ -12648,7 +12648,22 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
     openModal(`<div class="stack"><h2>자료 인용</h2><div class="note">${isSseol()?'현재 프로젝트의 설정 · 캐릭터 · 관계도 · 장문 · 연재본을 인용할 수 있습니다.':'다른 프로젝트의 설정 · 캐릭터 · 관계도 · 장문 · 연재본을 선택할 수 있습니다.'}</div>${groups||'<div class="empty">인용할 수 있는 자료가 없습니다.</div>'}<div class="right"><button onclick="closeModal()">닫기</button></div></div>`);
   };
   window.chooseSnsQuote=function(projectId,kind,id){if((isSseol()||!!document.querySelector('#projectSseol .snsProjectShell'))&&projectId!==currentProjectId)return;const found=(db[kind]||[]).some(x=>x.id===id&&x.project===projectId);if(!found)return;pendingQuote={projectId,kind,id};closeModal();setTimeout(renderSnsProject,210)};
-  window.openSnsQuote=function(kind,id){const x=(db[kind]||[]).find(v=>v.id===id);if(!x)return alert('인용 원본을 찾을 수 없습니다.');const pr=projectById(x.project),title=quoteTitle(kind,x);let body='';try{body=typeof itemText==='function'?itemText(kind,x):quoteSnippet(kind,x)}catch(_){body=quoteSnippet(kind,x)}body=String(body||'').trim();openModal(`<div class="stack"><div class="detailHead"><div><div class="detailTitle">${esc(title)}</div><div class="detailMeta">${esc(pr?.name||'프로젝트 없음')} · ${esc(quoteKindLabel(kind))}</div></div></div><div class="detailSection"><div class="detailLabel">인용 원본</div><div class="detailBody">${esc(body||'내용 없음').replace(/\n/g,'<br>')}</div></div><div class="right"><button onclick="closeModal()">닫기</button></div></div>`)};
+  window.openSnsQuote=function(kind,id){const x=(db[kind]||[]).find(v=>v.id===id);if(!x)return alert('인용 원본을 찾을 수 없습니다.');const pr=projectById(x.project),title=quoteTitle(kind,x);let body='';try{body=typeof itemText==='function'?itemText(kind,x):quoteSnippet(kind,x)}catch(_){body=quoteSnippet(kind,x)}body=String(body||'').trim();openModal(`<div class="stack"><div class="detailHead"><div><div class="detailTitle">${esc(title)}</div><div class="detailMeta">${esc(pr?.name||'프로젝트 없음')} · ${esc(quoteKindLabel(kind))}</div></div></div><div class="detailSection"><div class="detailLabel">인용 원본</div><div class="detailBody">${esc(body||'내용 없음').replace(/\n/g,'<br>')}</div></div><div class="right"><button onclick="closeModal()">닫기</button><button type="button" class="primary" onclick="goToSnsQuoteSource('${kind}','${id}')">해당 항목으로 이동</button></div></div>`)};
+  window.goToSnsQuoteSource=async function(kind,id){
+    const x=(db[kind]||[]).find(v=>v.id===id);
+    if(!x||!projectById(x.project))return alert('인용 원본을 찾을 수 없습니다.');
+    closeModal();
+    if(currentProjectId!==x.project){
+      await window.openProject(x.project);
+      if(currentProjectId!==x.project)return;
+    }
+    const hubWorkspace=document.querySelector('#studioHubTabs [data-hub="workspace"]');
+    if(hubWorkspace)hubWorkspace.click();
+    const category=document.querySelector('#studioHub [data-hub-open="'+kind+'"]');
+    if(category)category.click();
+    else document.querySelector('#projectView .subtabs button[data-subtab="'+kind+'"]')?.click();
+    await viewDoc(kind,id);
+  };
 
   function snsExportPostText(p){let out=String(p.text||'').trim();if(p.quote){const q=quoteDoc(p.quote);out+=`${out?'\n':''}[인용] ${q?quoteTitle(p.quote.kind,q):'원본 없음'}`}if(p.threadLinkId){const t=threadById(p.threadLinkId);if(t)out+=`${out?'\n':''}[타래 이동] ${t.name}`;}return out}
   function snsThreadTxt(t){const posts=socialPostsInThread(t.id,t.project);return [`# ${t.name||'이름 없는 타래'}`,...posts.map(p=>`${snsExportPostText(p)}\n${fmt(p.updated||p.created)}`)].join('\n\n')}
