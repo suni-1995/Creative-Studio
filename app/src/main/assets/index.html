@@ -12390,6 +12390,98 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
 </style>
 
 
+
+<!-- Creative project SNS thread management 20261031 -->
+<style id="creativeThreadManagementStyles">
+#backupTrash .backupTrashNav.creativeThreadNav{display:flex!important;gap:7px!important;flex-wrap:wrap}
+#backupTrash .creativeThreadNav button{flex:1;min-width:0}
+#creativeThreadManager{padding:12px 0}
+#creativeThreadManager .creativeThreadRow{display:flex;gap:12px;align-items:center;padding:13px;margin:8px 0;border:1px solid var(--line,#7774);border-radius:12px;cursor:pointer}
+#creativeThreadManager .creativeThreadRow span{min-width:0;overflow-wrap:anywhere}
+#creativeThreadManager .creativeThreadRow input{flex-shrink:0}
+#creativeThreadManager .creativeThreadActions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0}
+body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{display:flex!important}
+</style>
+<script id="creativeThreadManagementScript">
+(function(){
+ const supported=new Set(['advanced','general','short','fanwork']);
+ const nav=document.querySelector('#backupTrash .backupTrashNav');
+ if(!nav||document.getElementById('creativeThreadManager'))return;
+ nav.classList.add('creativeThreadNav');
+ const exportBtn=document.getElementById('backupTrashExportBtn');
+ const trashBtn=document.getElementById('backupTrashTrashBtn');
+ const manageBtn=document.createElement('button');
+ manageBtn.id='creativeThreadManageBtn';
+ manageBtn.type='button';
+ manageBtn.textContent='썰타래관리';
+ exportBtn.after(manageBtn);
+ const pane=document.createElement('div');
+ pane.id='creativeThreadManager';
+ pane.className='hidden';
+ pane.innerHTML='<div class="card stack"><h2>썰타래관리</h2><div class="meta">선택한 타래와 그 안의 썰 기록을 삭제합니다. 삭제한 타래는 복원할 수 없습니다.</div><div class="creativeThreadActions"><label><input id="creativeThreadSelectAll" type="checkbox"> 전체 선택</label><button id="creativeThreadDelete" type="button" class="danger">선택 삭제</button></div><div id="creativeThreadRows" class="stack"></div></div>';
+ document.getElementById('trash').after(pane);
+ const isSupported=()=>supported.has(currentProjectType())&&!!currentProjectId;
+ const originalOpen=window.openBackupTrashPane;
+ function render(){
+   const rows=document.getElementById('creativeThreadRows');
+   const threads=(db.socialThreads||[]).filter(t=>t.project===currentProjectId);
+   rows.innerHTML=threads.length?threads.map(t=>{
+     const count=(db.socialPosts||[]).filter(p=>p.project===currentProjectId&&p.threadId===t.id).length;
+     return '<label class="creativeThreadRow"><input type="checkbox" class="creativeThreadPick" value="'+esc(t.id)+'"><span><b>'+esc(t.name||'이름 없는 타래')+'</b><div class="meta">'+count+'개 기록</div></span></label>';
+   }).join(''):'<div class="empty">관리할 타래가 없습니다.</div>';
+   document.getElementById('creativeThreadSelectAll').checked=false;
+ }
+ function open(which){
+   const enabled=isSupported();
+   manageBtn.classList.toggle('hidden',!enabled);
+   if(!enabled&&which==='threads')which='export';
+   if(which==='threads'){
+     document.getElementById('export').classList.add('hidden');
+     document.getElementById('trash').classList.add('hidden');
+     pane.classList.remove('hidden');
+     exportBtn.classList.remove('active');
+     trashBtn.classList.remove('active');
+     manageBtn.classList.add('active');
+     render();
+   }else{
+     pane.classList.add('hidden');
+     manageBtn.classList.remove('active');
+     if(typeof originalOpen==='function')originalOpen.call(window,which);
+   }
+ }
+ window.openBackupTrashPane=function(which){return open(which)};
+ manageBtn.addEventListener('click',()=>open('threads'));
+ document.getElementById('creativeThreadSelectAll').addEventListener('change',e=>{
+   pane.querySelectorAll('.creativeThreadPick').forEach(x=>x.checked=e.target.checked);
+ });
+ document.getElementById('creativeThreadDelete').addEventListener('click',()=>{
+   if(!isSupported())return;
+   const ids=new Set([...pane.querySelectorAll('.creativeThreadPick:checked')].map(x=>x.value));
+   if(!ids.size)return alert('삭제할 타래를 선택해 주세요.');
+   const threads=(db.socialThreads||[]).filter(t=>t.project===currentProjectId&&ids.has(t.id));
+   if(!threads.length)return render();
+   const count=(db.socialPosts||[]).filter(p=>p.project===currentProjectId&&ids.has(p.threadId)).length;
+   if(!confirm('선택한 '+threads.length+'개 타래와 그 안의 썰 '+count+'개를 영구 삭제하시겠습니까?'))return;
+   db.socialThreads=db.socialThreads.filter(t=>!(t.project===currentProjectId&&ids.has(t.id)));
+   db.socialPosts=(db.socialPosts||[]).filter(p=>!(p.project===currentProjectId&&ids.has(p.threadId)));
+   for(const post of db.socialPosts)if(post.project===currentProjectId&&ids.has(post.threadLinkId))post.threadLinkId='';
+   if(typeof currentSnsThreadId!=='undefined'&&ids.has(currentSnsThreadId))currentSnsThreadId='';
+   persist();
+   render();
+ });
+ // Project navigation may hide the original header; restore it for thread management.
+ const refresh=()=>{
+   const enabled=isSupported();
+   manageBtn.classList.toggle('hidden',!enabled);
+   if(pane.classList.contains('hidden'))return;
+   if(!enabled)open('export');
+ };
+ document.addEventListener('click',e=>{
+   if(e.target.closest('[data-studio-nav],.subtabs,[data-tab]'))setTimeout(refresh,0);
+ },true);
+ refresh();
+})();
+</script>
 </body>
 </html>
 
