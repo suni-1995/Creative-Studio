@@ -12642,11 +12642,12 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
 
   window.openSnsQuotePicker=function(){
     pendingDraft=document.getElementById('snsComposerText')?.value||pendingDraft;
-    const projects=isSseol()?[(db.projects||[]).find(p=>p.id===currentProjectId)].filter(Boolean):(db.projects||[]).filter(p=>p.id!==currentProjectId&&p.projectType!==SNS);
+    const internalQuote=isSseol()||!!document.querySelector('#projectSseol .snsProjectShell');
+    const projects=internalQuote?[(db.projects||[]).find(p=>p.id===currentProjectId)].filter(Boolean):(db.projects||[]).filter(p=>p.id!==currentProjectId&&p.projectType!==SNS);
     const groups=projects.map(p=>{const parts=[];for(const k of quoteKinds){const arr=(db[k]||[]).filter(x=>x.project===p.id);if(!arr.length)continue;parts.push(`<details class="selectExportSubgroup"><summary>${esc(quoteKindLabel(k))} <span class="meta">${arr.length}</span></summary><div class="snsQuoteDocList">${arr.map(x=>`<button type="button" class="snsQuoteDoc" onclick="chooseSnsQuote('${p.id}','${k}','${x.id}')"><b>${esc(quoteTitle(k,x))}</b>${quoteSnippet(k,x)?`<div class="meta">${esc(String(quoteSnippet(k,x)).slice(0,100))}</div>`:''}</button>`).join('')}</div></details>`)}return parts.length?`<section class="snsQuoteProjectGroup"><b>${esc(p.name)}</b>${parts.join('')}</section>`:''}).filter(Boolean).join('');
     openModal(`<div class="stack"><h2>자료 인용</h2><div class="note">${isSseol()?'현재 프로젝트의 설정 · 캐릭터 · 관계도 · 장문 · 연재본을 인용할 수 있습니다.':'다른 프로젝트의 설정 · 캐릭터 · 관계도 · 장문 · 연재본을 선택할 수 있습니다.'}</div>${groups||'<div class="empty">인용할 수 있는 자료가 없습니다.</div>'}<div class="right"><button onclick="closeModal()">닫기</button></div></div>`);
   };
-  window.chooseSnsQuote=function(projectId,kind,id){if(isSseol()&&projectId!==currentProjectId)return;const found=(db[kind]||[]).some(x=>x.id===id&&x.project===projectId);if(!found)return;pendingQuote={projectId,kind,id};closeModal();setTimeout(renderSnsProject,210)};
+  window.chooseSnsQuote=function(projectId,kind,id){if((isSseol()||!!document.querySelector('#projectSseol .snsProjectShell'))&&projectId!==currentProjectId)return;const found=(db[kind]||[]).some(x=>x.id===id&&x.project===projectId);if(!found)return;pendingQuote={projectId,kind,id};closeModal();setTimeout(renderSnsProject,210)};
   window.openSnsQuote=function(kind,id){const x=(db[kind]||[]).find(v=>v.id===id);if(!x)return alert('인용 원본을 찾을 수 없습니다.');const pr=projectById(x.project),title=quoteTitle(kind,x);let body='';try{body=typeof itemText==='function'?itemText(kind,x):quoteSnippet(kind,x)}catch(_){body=quoteSnippet(kind,x)}body=String(body||'').trim();openModal(`<div class="stack"><div class="detailHead"><div><div class="detailTitle">${esc(title)}</div><div class="detailMeta">${esc(pr?.name||'프로젝트 없음')} · ${esc(quoteKindLabel(kind))}</div></div></div><div class="detailSection"><div class="detailLabel">인용 원본</div><div class="detailBody">${esc(body||'내용 없음').replace(/\n/g,'<br>')}</div></div><div class="right"><button onclick="closeModal()">닫기</button></div></div>`)};
 
   function snsExportPostText(p){let out=String(p.text||'').trim();if(p.quote){const q=quoteDoc(p.quote);out+=`${out?'\n':''}[인용] ${q?quoteTitle(p.quote.kind,q):'원본 없음'}`}if(p.threadLinkId){const t=threadById(p.threadLinkId);if(t)out+=`${out?'\n':''}[타래 이동] ${t.name}`;}return out}
@@ -15047,3 +15048,13 @@ body.snsKeyboardActive #projectSseol .snsProjectShell{padding-bottom:24px}
  return result};
 })();
 </script>
+
+<style id="fixSseolQuoteAndTopButton">
+/* Keep the global scroll-to-top control away from the SNS/썰 composer. */
+body:has(#projectSseol:not(.hidden) .snsProjectShell) #scrollTopBtn,
+body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
+ top:calc(env(safe-area-inset-top, 0px) + 76px)!important;
+ right:14px!important;
+ bottom:auto!important;
+}
+</style>
