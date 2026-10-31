@@ -12400,6 +12400,14 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
 #creativeThreadManager .creativeThreadRow span{min-width:0;overflow-wrap:anywhere}
 #creativeThreadManager .creativeThreadRow input{flex-shrink:0}
 #creativeThreadManager .creativeThreadActions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0}
+/* Creative 썰: keyboard dismissed means project navigation must return. */
+body.studioDetail:not(.snsKeyboardActive) #studioBottomNav[data-project-menu="yes"]{display:grid!important;visibility:visible!important}
+#creativeThreadManager .creativeThreadRow{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important}
+#creativeThreadManager .creativeThreadRow input.creativeThreadPick{appearance:auto!important;-webkit-appearance:checkbox!important;display:block!important;flex:0 0 20px!important;width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;margin:0!important;padding:0!important;position:static!important}
+#creativeThreadManager .creativeThreadRow span{display:block!important;flex:1 1 auto!important;min-width:0!important;max-width:100%!important;text-align:left!important;writing-mode:horizontal-tb!important;white-space:normal!important}
+#creativeThreadManager .creativeThreadActions input[type="checkbox"]{appearance:auto!important;-webkit-appearance:checkbox!important;width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;flex:none!important;margin:0 8px 0 0!important;vertical-align:middle!important}
+#creativeThreadManager .creativeThreadActions label{display:flex!important;align-items:center!important;white-space:nowrap!important}
+
 body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{display:flex!important}
 </style>
 <script id="creativeThreadManagementScript">
@@ -12656,7 +12664,7 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
     shell?.classList.toggle('snsKeyboardOpen',active);
     // Inline visibility prevents the later project-nav display rules from covering the editor.
     const nav=document.getElementById('studioBottomNav');
-    if(nav){if(active){nav.style.setProperty('display','none','important')}else{nav.style.removeProperty('display')}}
+    if(nav){if(active){nav.style.setProperty('display','none','important')}else{nav.style.removeProperty('display');nav.style.removeProperty('visibility')}}
     if(shell){shell.style.setProperty('--snsKeyboardInset','0px');const vv=window.visualViewport;const available=vv?.height||window.innerHeight;shell.style.setProperty('--snsEditorMaxHeight',Math.max(64,Math.floor(available*.25))+'px');}
   }
   function snsKeyboardIsOpen(){const vv=window.visualViewport;return !!(vv&&vv.height<(window.innerHeight||document.documentElement.clientHeight)*0.88)}
