@@ -12694,10 +12694,10 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
     const delta=postRect.bottom-(composerRect.top-12);
     if(delta>2)window.scrollBy({top:delta,behavior:'auto'});
   }
-  function settleSnsComposerView(){if(!snsEditorActive()||document.activeElement?.id!=='snsComposerText')return;setSnsKeyboardState(true);requestAnimationFrame(()=>ensureSnsComposerVisible());setTimeout(()=>ensureSnsComposerVisible(),160)}
+  function settleSnsComposerView(){if(!snsEditorActive()||document.activeElement?.id!=='snsComposerText'||!snsKeyboardIsOpen())return;setSnsKeyboardState(true);requestAnimationFrame(()=>ensureSnsComposerVisible());setTimeout(()=>ensureSnsComposerVisible(),160)}
   if(window.visualViewport&&!window.__snsViewportBound){
     window.__snsViewportBound=true;
-    window.visualViewport.addEventListener('resize',()=>{if(!snsEditorActive())return;const focused=document.activeElement?.id==='snsComposerText';setSnsKeyboardState(focused||snsKeyboardIsOpen());if(focused)settleSnsComposerView()});
+    window.visualViewport.addEventListener('resize',()=>{if(!snsEditorActive())return;const focused=document.activeElement?.id==='snsComposerText';const keyboardOpen=snsKeyboardIsOpen();setSnsKeyboardState(keyboardOpen);if(focused&&keyboardOpen)settleSnsComposerView()});
     window.visualViewport.addEventListener('scroll',()=>{if(snsEditorActive()&&document.activeElement?.id==='snsComposerText')ensureSnsComposerVisible()},{passive:true});
   }
 
