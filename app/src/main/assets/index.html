@@ -12772,7 +12772,8 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
       if(k==='relations') return x.note||x.desc||x.memo||'';
       return x.body||x.note||x.desc||x.summary||'';
     };
-    const projects=(db.projects||[]).filter(p=>p.id!==currentProjectId&&p.projectType!==SNS);
+    const internalQuote=['advanced','general','short','fanwork'].includes(projectById(currentProjectId)?.projectType);
+    const projects=(db.projects||[]).filter(p=>internalQuote?p.id===currentProjectId:(p.id!==currentProjectId&&p.projectType!==SNS));
     const groups=projects.map(p=>{
       const cats=[];
       let total=0;
@@ -12785,7 +12786,7 @@ body.studioDetail #projectView.studioHubLanding,body.studioDetail #projectView.s
       if(!cats.length) return '';
       return `<section class="snsQuoteProjectGroup"><div class="snsQuoteProjectHeader"><div class="snsQuoteProjectTitle">${esc(p.name)}</div><div class="snsQuoteProjectMeta">${esc(typeLabel(p.projectType))} · ${total}개 자료</div></div>${cats.join('')}</section>`;
     }).filter(Boolean).join('');
-    openModal(`<div class="stack"><h2>자료 인용</h2><div class="note">다른 프로젝트의 설정 · 캐릭터 · 관계도 · 썰/장문 · 연재본을 선택할 수 있습니다.</div>${groups||'<div class="empty">인용할 수 있는 다른 프로젝트 자료가 없습니다.</div>'}<div class="right"><button onclick="closeModal()">닫기</button></div></div>`);
+    openModal(`<div class="stack"><h2>자료 인용</h2><div class="note">${internalQuote?'현재 프로젝트의 설정 · 캐릭터 · 관계도 · 장문 · 연재본을 인용할 수 있습니다.':'다른 프로젝트의 설정 · 캐릭터 · 관계도 · 장문 · 연재본을 선택할 수 있습니다.'}</div>${groups||'<div class="empty">인용할 수 있는 자료가 없습니다.</div>'}<div class="right"><button onclick="closeModal()">닫기</button></div></div>`);
   };
 
   function isSnsProjectOpen(){
@@ -15055,6 +15056,7 @@ body:has(#projectSseol:not(.hidden) .snsProjectShell) #scrollTopBtn,
 body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  top:calc(env(safe-area-inset-top, 0px) + 76px)!important;
  right:14px!important;
+ left:auto!important;
  bottom:auto!important;
 }
 </style>
