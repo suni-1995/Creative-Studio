@@ -516,7 +516,42 @@ function importData(e){let f=e.target.files?.[0];if(!f)return;let r=new FileRead
 async function appSaveBlob(blob,name){if(window.Android){let r=new FileReader();r.onload=()=>Android.saveDataUrl(safeFileName(name),r.result);r.readAsDataURL(blob);return}let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=safeFileName(name);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),700)}
 function appSaveDataUrl(data,name){if(window.Android){Android.saveDataUrl(safeFileName(name),data);return}let a=document.createElement('a');a.href=data;a.download=safeFileName(name);a.click()}
 function appPrintDocument(title,html){
-  return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+pdfPrintCss()+'</style></head><body>'+html+'</body></html>';
+  return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+pdfPrintCss()+'</style></head><body>'+html+'
+<style id="readerStickyNav2026">
+#modalCard>.readerStickyActions2026{position:sticky;bottom:0;z-index:10;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 0 12px;background:var(--card);border-top:1px solid var(--line);width:100%;box-sizing:border-box}
+#modalCard>.readerStickyActions2026 button{min-width:0!important;width:100%!important;min-height:48px!important;padding:10px 4px!important;margin:0!important;font-size:clamp(11px,3vw,14px)!important}
+#modalCard>.readerStickyActions2026 .readerClose2026{grid-column:1/-1}
+</style>
+<script id="readerStickyNavLogic2026">
+(()=>{
+ const card=document.getElementById('modalCard');if(!card)return;
+ let scheduled=false;
+ function adjust(){
+  const reader=card.querySelector('.fix26P2Reader');
+  if(!reader||reader.classList.contains('fix27CwReader'))return;
+  const footer=reader.querySelector('.fix26P2Footer:not(.fix27CwReaderFooter)');
+  if(!footer)return;
+  let bar=card.querySelector(':scope > .readerStickyActions2026');
+  if(!bar){bar=document.createElement('div');bar.className='readerStickyActions2026'}
+  const nav=reader.querySelector('#fix28FolderReaderNav');
+  if(nav){for(const btn of [...nav.querySelectorAll('button')])bar.append(btn);nav.remove()}
+  for(const btn of [...footer.querySelectorAll('button')]){if(btn.textContent.trim()==='닫기')btn.classList.add('readerClose2026');bar.append(btn)}
+  const find=t=>[...bar.children].find(b=>b.textContent.includes(t));
+  const prev=find('이전화'),next=find('다음화'),edit=find('편집'),close=bar.querySelector('.readerClose2026');
+  if(!edit||!close)return;
+  if(!prev){const b=document.createElement('button');b.textContent='← 이전화';b.disabled=true;bar.prepend(b)}
+  if(!next){const b=document.createElement('button');b.textContent='다음화 →';b.disabled=true;close.before(b)}
+  const nextButton=find('다음화');nextButton.before(edit);bar.append(close);
+  const top=card.querySelector(':scope > .modalBottomScrollTop');
+  if(top){if(bar.nextElementSibling!==top)card.insertBefore(bar,top)}
+  else if(bar.parentElement!==card)card.append(bar);
+ }
+ const obs=new MutationObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;adjust()})});
+ obs.observe(card,{childList:true,subtree:true});
+ adjust();
+})();
+</script>
+</body></html>';
 }
 function appPrint(title,html){
   if(!window.Android||typeof Android.printHtml!=='function')return false;
