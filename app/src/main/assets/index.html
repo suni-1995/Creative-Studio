@@ -15178,3 +15178,167 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  bottom:auto!important;
 }
 </style>
+
+<!-- Settings category navigation: scoped to creative project types -->
+<style id="settingsCategoryNav2026">
+#projectSettings .settingsCategoryStrip{display:flex;flex-wrap:nowrap;gap:7px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:3px 0 10px;max-width:100%;touch-action:pan-x}
+#projectSettings .settingsCategoryStrip::-webkit-scrollbar{display:none}
+#projectSettings .settingsCategoryStrip button{flex:0 0 auto;white-space:nowrap;border-radius:999px;padding:9px 13px}
+#projectSettings .settingsCategoryStrip button.active{background:var(--theme);color:white}
+#projectSettings .settingsFilterLine{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.15fr);gap:7px;width:100%;margin-bottom:10px}
+#projectSettings .settingsFilterLine>*{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+#projectSettings .settingsHeaderActions{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;margin-left:auto}
+#projectSettings .settingsHeaderActions button{white-space:nowrap;padding:9px 7px;font-size:clamp(10px,2.7vw,13px)}
+#projectSettings .settingsMainHeader{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;min-width:0}
+#projectSettings .settingsMainHeader>div:first-child{min-width:0;flex:1}
+#projectSettings .settingsMainHeader h3{white-space:nowrap}
+</style>
+<script id="settingsCategoryNavLogic2026">
+(function(){
+ const TYPES=['All','세계관','지역','조직','종족','아이템','분류','기타'];
+ let active='All';
+ const originalSetup=setupSections, originalRender=renderSettings, originalList=listData;
+ const originalNew=newSetting,originalSave=saveSetting;
+ const originalManager=openManagedGroupManager,originalOptions=managedGroupOptions;
+ function isCreative(){return ['advanced','general','short','fanwork'].includes((db.projects||[]).find(x=>x.id===currentProjectId)?.projectType)}
+ function category(x){return TYPES.includes(x?.type)?x.type:'기타'}
+ function groups(){if(!Array.isArray(db.settingGroups))db.settingGroups=[];return db.settingGroups.filter(g=>g.project===currentProjectId)}
+ function migrate(){
+   if(!isCreative())return;
+   let changed=false;
+   for(const g of groups()){
+     if(g.category)continue;
+     const docs=(db.settings||[]).filter(x=>x.project===currentProjectId&&x.group===g.name);
+     const types=[...new Set(docs.map(category))];
+     if(types.length===1){g.category=types[0];changed=true}
+     // Old mixed-category groups remain visible in All until the user separates them.
+   }
+   if(changed)persist();
+ }
+ function build(){
+   if(!isCreative())return;
+   const host=document.getElementById('projectSettings');if(!host)return;
+   const toolbar=host.querySelector('.toolbar');
+   if(!toolbar)return;
+   toolbar.classList.add('settingsMainHeader');
+   const add=[...toolbar.querySelectorAll('button')].find(b=>b.textContent.includes('새 항목'));
+   if(add){
+     let actions=toolbar.querySelector('.settingsHeaderActions');
+     if(!actions){actions=document.createElement('div');actions.className='settingsHeaderActions';toolbar.appendChild(actions)}
+     const sort=document.getElementById('fix25Sort_settings');
+     if(sort)actions.appendChild(sort);
+     let manage=host.querySelector('#settingGroupManageBar button');
+     if(!manage){manage=document.createElement('button');manage.type='button';manage.onclick=()=>openManagedGroupManager('settings')}
+     manage.textContent='그룹 관리';actions.appendChild(manage);actions.appendChild(add);
+     host.querySelector('#settingGroupManageBar')?.remove();
+   }
+   const tag=document.getElementById('settingsTag'),sort=document.getElementById('settingsSort'),search=document.getElementById('settingsSearch');
+   if(tag&&sort&&search){
+     let line=host.querySelector('.settingsFilterLine');
+     if(!line){line=document.createElement('div');line.className='settingsFilterLine';toolbar.after(line)}
+     line.append(tag,sort,search);
+     const old=host.querySelectorAll('.toolbar');
+     for(const t of old)if(t!==toolbar&&!t.querySelector('input,select,button'))t.remove();
+   }
+   let strip=host.querySelector('.settingsCategoryStrip');
+   if(!strip){strip=document.createElement('div');strip.className='settingsCategoryStrip';const line=host.querySelector('.settingsFilterLine');(line||toolbar).after(strip)}
+   strip.innerHTML=TYPES.map(t=>'<button type="button" class="'+(active===t?'active':'')+'" data-setting-category="'+t+'">'+t+'</button>').join('');
+   strip.querySelectorAll('button').forEach(b=>b.onclick=()=>{active=b.dataset.settingCategory;resetLimit('settings');renderSettings()});
+ }
+ setupSections=function(){const r=originalSetup();active='All';migrate();build();return r};
+ listData=function(kind,fields){
+   const rows=originalList(kind,fields);
+   if(kind!=='settings'||!isCreative()||active==='All')return rows;
+   return rows.filter(x=>category(x)===active);
+ };
+ function visibleGroups(){
+   const all=groups();
+   return active==='All'?all:all.filter(g=>g.category===active||(!g.category&&(db.settings||[]).some(x=>x.project===currentProjectId&&x.group===g.name&&category(x)===active)));
+ }
+ renderSettings=function(){
+   if(!isCreative())return originalRender();
+   migrate();build();
+   // Temporarily restrict the render input; restore both arrays immediately.
+   const settings=db.settings,stored=db.settingGroups;
+   if(active!=='All'){
+     db.settings=settings.filter(x=>x.project!==currentProjectId||category(x)===active);
+     db.settingGroups=stored.filter(g=>g.project!==currentProjectId||visibleGroups().some(v=>v.id===g.id));
+   }
+   try{return originalRender()}finally{db.settings=settings;db.settingGroups=stored;build()}
+ };
+ managedGroupOptions=function(kind,selected=''){
+   if(kind!=='settings'||!isCreative())return originalOptions(kind,selected);
+   const chosen=document.getElementById('stype')?.value|| (active==='All'?'세계관':active);
+   const available=groups().filter(g=>g.category===chosen||(!g.category&&g.name===selected));
+   return '<option value="">미분류</option>'+available.map(g=>'<option value="'+esc(g.name)+'" '+(selected===g.name?'selected':'')+'>'+esc(g.name)+'</option>').join('');
+ };
+ function refreshEditorGroups(){
+   const select=document.getElementById('sgroup');if(!select)return;
+   const prev=select.value;
+   select.innerHTML=managedGroupOptions('settings',prev);
+   if([...select.options].some(o=>o.value===prev))select.value=prev;
+   try{syncAppSelect(select)}catch(_){}
+ }
+ newSetting=async function(x){
+   const obj=typeof x==='string'?decodeObj(x):x;
+   const fresh=!obj||!obj.title;
+   const r=await originalNew(x);
+   if(!isCreative())return r;
+   const type=document.getElementById('stype');
+   if(type){
+     [...type.options].filter(o=>o.value==='연표'||o.textContent==='연표').forEach(o=>o.remove());
+     if(fresh&&active!=='All')type.value=active;
+     type.addEventListener('change',refreshEditorGroups);
+   }
+   refreshEditorGroups();
+   return r;
+ };
+ saveSetting=function(id){
+   if(isCreative()){
+     const group=document.getElementById('sgroup')?.value;
+     const type=document.getElementById('stype')?.value;
+     const g=groups().find(x=>x.name===group);
+     if(g&&g.category&&g.category!==type){alert('같은 설정 분류의 그룹만 선택할 수 있습니다.');return}
+   }
+   return originalSave(id);
+ };
+ openManagedGroupManager=function(kind){
+   if(kind!=='settings'||!isCreative())return originalManager(kind);
+   const chosen=active==='All'?'세계관':active;
+   const opts=TYPES.slice(1).map(t=>'<option value="'+t+'" '+(chosen===t?'selected':'')+'>'+t+'</option>').join('');
+   openModal('<div class="stack"><h2>그룹 관리</h2><select id="settingGroupCategory" onchange="settingsGroupManagerRefresh()">'+opts+'</select><div class="row"><input id="settingGroupNewName" placeholder="새 그룹 이름"><button class="primary" onclick="settingsAddCategoryGroup()">+ 그룹 추가</button></div><div id="settingsCategoryGroupRows"></div><div class="right"><button onclick="closeModal()">닫기</button></div></div>');
+   window.settingsGroupManagerRefresh();
+ };
+ window.settingsGroupManagerRefresh=function(){
+   const type=document.getElementById('settingGroupCategory')?.value;
+   const rows=document.getElementById('settingsCategoryGroupRows');if(!rows)return;
+   const arr=groups().filter(g=>g.category===type||(!g.category&&(db.settings||[]).some(x=>x.project===currentProjectId&&x.group===g.name&&category(x)===type)));
+   rows.innerHTML=arr.length?arr.map(g=>'<div class="managedGroupRow"><b>'+esc(g.name)+'</b><button onclick="settingsEditCategoryGroup(\''+g.id+'\')">수정</button><button class="danger" onclick="settingsDeleteCategoryGroup(\''+g.id+'\')">삭제</button></div>').join(''):'<div class="empty">이 분류에 그룹이 없습니다.</div>';
+ };
+ window.settingsAddCategoryGroup=function(){
+   const type=document.getElementById('settingGroupCategory')?.value,name=document.getElementById('settingGroupNewName')?.value.trim();
+   if(!name)return;
+   if(groups().some(g=>g.name===name)){alert('다른 분류를 포함하여 이미 사용 중인 그룹 이름입니다.');return}
+   db.settingGroups.push({id:uid(),name,category:type,project:currentProjectId,created:Date.now(),linkedIds:[]});persist();settingsGroupManagerRefresh();renderSettings();
+ };
+ window.settingsEditCategoryGroup=function(id){
+   const g=groups().find(x=>x.id===id);if(!g)return;
+   // Retain the existing group-link editing functionality.
+   openGroupLinksModal('settings',id);
+ };
+ window.settingsDeleteCategoryGroup=function(id){
+   const g=groups().find(x=>x.id===id);if(!g)return;
+   if(!confirm("'"+g.name+"' 그룹을 삭제할까요? 문서는 삭제되지 않습니다."))return;
+   for(const x of db.settings)if(x.project===currentProjectId&&x.group===g.name&&(!g.category||category(x)===g.category))x.group='';
+   db.settingGroups=db.settingGroups.filter(x=>x.id!==id);persist();openManagedGroupManager('settings');renderSettings();
+ };
+ // Keep new group metadata when editing existing groups through the original editor.
+ const originalGroupSave=window.saveGroupLinksModal;
+ if(typeof originalGroupSave==='function')window.saveGroupLinksModal=function(kind,id){
+   const type=kind==='settings'?(groups().find(g=>g.id===id)?.category||document.getElementById('settingGroupCategory')?.value||active):'';
+   const result=originalGroupSave.apply(this,arguments);
+   if(kind==='settings'&&type&&type!=='All'){const g=groups().find(x=>x.id===id);if(g&&!g.category){g.category=type;persist()}}
+   return result;
+ };
+})();
+</script>
