@@ -8361,7 +8361,7 @@ html[data-mode="dark"] .memoProjectCard .projectActions .memoCountInline{backgro
 </style>
 <script id="fix27Fanwork">
 (function(){
-  const FAN='fanwork', SOURCE_KINDS=new Set(['settings','characters','relations','timeline']);
+  const FAN='fanwork', SOURCE_KINDS=new Set(['settings','characters','timeline']);
   const srcLabel=s=>({original:'원작',fan:'2차 창작',mixed:'혼합'}[s]||'2차 창작');
   const isFan=()=>currentProjectType()===FAN;
 
@@ -8428,10 +8428,10 @@ html[data-mode="dark"] .memoProjectCard .projectActions .memoCountInline{backgro
   listData=function(kind,fields){let a=_listData(kind,fields);return isFan()&&SOURCE_KINDS.has(kind)&&filters[kind]?a.filter(x=>(x.fanSource||'fan')===filters[kind]):a};
   window.fix27SetSourceFilter=(kind,val)=>{filters[kind]=val||'';({settings:renderSettings,characters:renderCharacters,relations:renderRelations,timeline:renderTimeline}[kind])?.()};
   function installFilter(kind){if(!isFan())return;const sec=document.getElementById('project'+kind[0].toUpperCase()+kind.slice(1));if(!sec||sec.querySelector('.fanworkSourceFilter'))return;const bar=sec.querySelectorAll('.toolbar')[1]||sec.querySelector('.toolbar');if(!bar)return;const host=bar.querySelector('.right')||bar,s=document.createElement('select');s.className='filterSel fanworkSourceFilter';s.innerHTML='<option value="">출처 전체</option><option value="original">원작</option><option value="fan">2차 창작</option><option value="mixed">혼합</option>';s.value=filters[kind];s.onchange=()=>fix27SetSourceFilter(kind,s.value);host.prepend(s);try{syncAppSelect(s)}catch(_){ }}
-  function installFilters(){['settings','characters','relations','timeline'].forEach(installFilter)}
+  function installFilters(){['settings','characters','timeline'].forEach(installFilter)}
   function findId(el,kind){const s=el.getAttribute('onclick')||'';return s.match(new RegExp("viewDoc\\('"+kind+"','([^']+)'\\)"))?.[1]||s.match(new RegExp("fix25MoveItemStable\\('"+kind+"','([^']+)'"))?.[1]||''}
   function decorate(kind){if(!isFan())return;const list=document.getElementById(kind+'List');if(!list)return;list.querySelectorAll('.item[onclick],.fix25OrderRow').forEach(el=>{if(el.querySelector('.fanSourceBadge'))return;const id=findId(el,kind),d=id&&getDoc(kind,id);if(!d)return;const b=document.createElement('span');b.className='fanSourceBadge';b.textContent=srcLabel(d.fanSource||'fan');const line=el.querySelector('.itemTitleLine,.timelineTitleLine');if(line)line.appendChild(b);else el.querySelector('b')?.insertAdjacentElement('afterend',b)})}
-  function decorateAll(){['settings','characters','relations','timeline'].forEach(decorate)}
+  function decorateAll(){['settings','characters','timeline'].forEach(decorate)}
   const obs=new MutationObserver(()=>{if(isFan())setTimeout(()=>{installFilters();decorateAll()},0)});const pv=document.getElementById('projectView');if(pv)obs.observe(pv,{childList:true,subtree:true});
 
   const _itemText=itemText; itemText=function(kind,x){let t=_itemText(kind,x);if(SOURCE_KINDS.has(kind)&&projectById(x?.project)?.projectType===FAN){const a=t.split('\n');a.splice(1,0,'출처: '+srcLabel(x.fanSource||'fan'));t=a.join('\n')}return t};
@@ -15718,5 +15718,28 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  const old=window.setupSections;
  window.setupSections=function(){const result=old.apply(this,arguments);queueMicrotask(arrange);return result};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arrange);else arrange();
+})();
+</script>
+
+<style id="creativeWorksFilterRow2026">
+#projectCreativeWorks .creativeWorksFilterRow2026{display:grid!important;grid-template-columns:minmax(0,.8fr) minmax(0,.85fr) minmax(0,1.65fr);gap:7px;align-items:stretch;margin:10px 0;width:100%}
+#projectCreativeWorks .creativeWorksFilterRow2026>select,#projectCreativeWorks .creativeWorksFilterRow2026>input,#projectCreativeWorks .creativeWorksFilterRow2026>.appSelectButton{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;margin:0!important}
+#projectCreativeWorks .creativeWorksFilterRow2026>.appSelectButton{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 7px!important}
+</style>
+<script id="creativeWorksFilterRowLogic2026">
+(function(){
+ const host=document.getElementById('projectCreativeWorks');
+ if(!host)return;
+ function arrange(){
+  const search=document.getElementById('creativeWorksSearch'),tag=document.getElementById('creativeWorksType'),sort=document.getElementById('creativeWorksSort');
+  if(!search||!tag||!sort)return;
+  let row=host.querySelector('.creativeWorksFilterRow2026');
+  if(!row){row=document.createElement('div');row.className='creativeWorksFilterRow2026';const toolbar=search.closest('.toolbar');if(toolbar)toolbar.replaceWith(row);else search.before(row)}
+  for(const sel of [tag,sort]){const button=sel.nextElementSibling?.classList.contains('appSelectButton')?sel.nextElementSibling:null;row.append(sel);if(button)row.append(button);else try{syncAppSelect(sel)}catch(_){}}
+  row.append(search);
+ }
+ let pending=false;
+ const obs=new MutationObserver(()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;arrange()})});
+ obs.observe(host,{childList:true,subtree:true});arrange();
 })();
 </script>
