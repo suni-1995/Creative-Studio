@@ -15600,3 +15600,36 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  };
 })();
 </script>
+
+<!-- Unified media/timeline filters and category inner-line cleanup -->
+<style id="unifiedMediaFilters2026">
+#projectTimeline .unifiedFilterRow,#projectImages .unifiedFilterRow,#projectVideos .unifiedFilterRow,#projectSources .unifiedFilterRow{display:grid!important;grid-template-columns:minmax(0,.8fr) minmax(0,.85fr) minmax(0,1.65fr);gap:7px;align-items:stretch;margin:10px 0}
+#projectTimeline .unifiedFilterRow>*,#projectImages .unifiedFilterRow>*,#projectVideos .unifiedFilterRow>*,#projectSources .unifiedFilterRow>*{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;margin:0!important}
+#projectTimeline .unifiedFilterRow>.appSelectButton,#projectImages .unifiedFilterRow>.appSelectButton,#projectVideos .unifiedFilterRow>.appSelectButton,#projectSources .unifiedFilterRow>.appSelectButton{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 7px!important}
+#projectTimeline .timelineCategoryGroupBody:not(.isEmpty){background-image:none!important}
+</style>
+<script id="unifiedMediaFiltersLogic2026">
+(function(){
+ const kinds=['timeline','images','videos','sources'];
+ function arrange(){
+  for(const kind of kinds){
+   const host=document.getElementById('project'+kind.charAt(0).toUpperCase()+kind.slice(1));
+   if(!host)return;
+   const search=document.getElementById(kind+'Search'),tag=document.getElementById(kind+'Tag'),sort=document.getElementById(kind+'Sort');
+   if(!search||!tag||!sort)continue;
+   let row=host.querySelector('.unifiedFilterRow');
+   if(!row){row=document.createElement('div');row.className='unifiedFilterRow';const toolbar=search.closest('.toolbar');if(toolbar)toolbar.replaceWith(row);else search.before(row)}
+   for(const sel of [tag,sort]){
+    const companion=sel.nextElementSibling?.classList.contains('appSelectButton')?sel.nextElementSibling:null;
+    row.append(sel);
+    if(companion)row.append(companion);
+    else try{syncAppSelect(sel)}catch(_){}
+   }
+   row.append(search);
+  }
+ }
+ const oldSetup=window.setupSections;
+ window.setupSections=function(){const result=oldSetup.apply(this,arguments);queueMicrotask(arrange);return result};
+ queueMicrotask(arrange);
+})();
+</script>
