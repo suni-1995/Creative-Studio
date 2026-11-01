@@ -15530,3 +15530,73 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  });
 })();
 </script>
+
+<!-- Character toolbar and serial search results correction -->
+<style id="characterSerialRefine2026">
+#projectCharacters #characterGroupManageBar{display:none!important}
+#projectCharacters .characterUnifiedHead{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px;flex-wrap:nowrap!important}
+#projectCharacters .characterUnifiedHead>div:first-child{min-width:0;flex:1 1 auto}
+#projectCharacters .characterUnifiedHead h3{font-size:16px!important;white-space:nowrap}
+#projectCharacters .characterUnifiedActions{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+#projectCharacters .characterUnifiedActions button{width:auto!important;min-width:0!important;margin:0!important;padding:11px 7px!important;white-space:nowrap!important;font-size:clamp(10px,2.7vw,13px)!important}
+#projectCharacters .characterUnifiedFilters{display:grid!important;grid-template-columns:minmax(0,.8fr) minmax(0,.85fr) minmax(0,1.65fr);gap:7px;margin:10px 0;align-items:stretch}
+#projectCharacters .characterUnifiedFilters>*{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;margin:0!important}
+#projectCharacters .characterUnifiedFilters>.appSelectButton{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 7px!important}
+#projectSerials .serialSearchResults>.item{margin-bottom:10px}
+@media(max-width:390px){#projectCharacters .characterUnifiedActions{gap:3px}#projectCharacters .characterUnifiedActions button{font-size:10px!important;padding:10px 5px!important}}
+</style>
+<script id="characterSerialRefineLogic2026">
+(function(){
+ const baseSetup=setupSections,baseRenderSerials=renderSerials;
+ function creative(){return !!currentProjectId&&['advanced','general','short','fanwork'].includes(currentProjectType())}
+ function characterLayout(){
+  if(!creative())return;
+  const host=document.getElementById('projectCharacters');if(!host)return;
+  const head=[...host.querySelectorAll('.toolbar')].find(x=>x.querySelector('h3'));if(!head)return;
+  head.classList.add('characterUnifiedHead');
+  const add=[...head.querySelectorAll('button')].find(x=>x.textContent.includes('새 항목'));
+  if(add){
+   let actions=head.querySelector('.characterUnifiedActions');
+   if(!actions){actions=document.createElement('div');actions.className='characterUnifiedActions';head.append(actions)}
+   let manage=document.getElementById('characterUnifiedManage');
+   if(!manage){manage=document.createElement('button');manage.type='button';manage.id='characterUnifiedManage';manage.textContent='그룹 관리';manage.onclick=()=>openManagedGroupManager('characters')}
+   if(manage.parentElement!==actions)actions.append(manage);
+   const direct=document.getElementById('fix25Sort_characters');
+   if(direct&&direct.parentElement!==actions)actions.append(direct);
+   if(add.parentElement!==actions)actions.append(add);
+  }
+  const tag=document.getElementById('charactersTag'),sort=document.getElementById('charactersSort'),search=document.getElementById('charactersSearch');
+  if(tag&&sort&&search){
+   let row=host.querySelector('.characterUnifiedFilters');
+   if(!row){row=document.createElement('div');row.className='characterUnifiedFilters';head.after(row)}
+   for(const select of [tag,sort]){
+    const companion=select.nextElementSibling?.classList.contains('appSelectButton')?select.nextElementSibling:null;
+    if(select.parentElement!==row)row.append(select);
+    if(companion&&companion.parentElement!==row)row.append(companion);
+    if(!companion)try{syncAppSelect(select)}catch(_){}
+   }
+   if(search.parentElement!==row)row.append(search);
+  }
+ }
+ setupSections=function(){const result=baseSetup.apply(this,arguments);queueMicrotask(characterLayout);return result};
+ const view=document.getElementById('projectView');
+ if(view)view.addEventListener('click',e=>{if(e.target.closest('[data-hub-open="characters"]'))setTimeout(characterLayout,10)});
+ renderSerials=function(){
+  const result=baseRenderSerials.apply(this,arguments);
+  if(!creative())return result;
+  const query=document.getElementById('serialsSearch')?.value.trim()||'';
+  const list=document.getElementById('serialsList');
+  if(!query||!list)return result;
+  // Base renderer already applies text, tag and selected category filters.
+  // Show the matching cards directly rather than their containing folders.
+  const cards=[...list.querySelectorAll('.item')].filter(x=>x.style.display!=='none');
+  const fragment=document.createDocumentFragment();
+  const wrap=document.createElement('div');wrap.className='serialSearchResults';
+  for(const card of cards)wrap.append(card);
+  fragment.append(wrap);
+  if(!cards.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='검색 결과가 없습니다.';fragment.append(empty)}
+  list.replaceChildren(fragment);
+  return result;
+ };
+})();
+</script>
