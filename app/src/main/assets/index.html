@@ -15197,6 +15197,17 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 #projectSettings .settingsCategoryStrip button{flex:0 0 auto!important;width:auto!important;white-space:nowrap;padding:9px 13px;border-radius:999px}
 #projectSettings .settingsCategoryStrip button.active{background:var(--theme);color:#fff}
 #projectSettings .settingsOldFilterToolbar{display:none!important}
+
+/* Give search most of the filter row; keep all three controls on one line. */
+#projectSettings .settingsFilterLine{grid-template-columns:minmax(0,.77fr) minmax(0,.83fr) minmax(0,1.65fr)!important}
+#projectSettings .settingsMainHeader .settingsHeaderActions{flex:1 1 auto;justify-content:flex-end;gap:5px}
+#projectSettings .settingsMainHeader .settingsHeaderActions button{font-size:clamp(11px,2.85vw,14px)!important;padding:11px 8px!important;min-height:43px}
+#projectSettings .settingsMainHeader>div:first-child{flex:0 1 28% !important}
+@media(max-width:390px){
+ #projectSettings .settingsMainHeader .settingsHeaderActions{gap:3px}
+ #projectSettings .settingsMainHeader .settingsHeaderActions button{font-size:11px!important;padding:10px 5px!important}
+ #projectSettings .settingsMainHeader h3{font-size:15px!important}
+}
 </style>
 <script id="settingsCategoryUiCorrectedLogic">
 (function(){
@@ -15215,10 +15226,11 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
   if(add){
    let actions=head.querySelector('.settingsHeaderActions');
    if(!actions){actions=document.createElement('div');actions.className='settingsHeaderActions';head.append(actions)}
-   const sort=document.getElementById('fix25Sort_settings');if(sort)actions.append(sort);
+   const sort=document.getElementById('fix25Sort_settings');if(sort&&sort.parentElement!==actions)actions.append(sort);
    let manage=document.getElementById('settingsSingleGroupButton');
    if(!manage){manage=document.createElement('button');manage.id='settingsSingleGroupButton';manage.type='button';manage.textContent='그룹 관리';manage.onclick=()=>openManagedGroupManager('settings')}
-   actions.append(manage,add);
+   if(manage.parentElement!==actions)actions.append(manage);
+   if(add.parentElement!==actions)actions.append(add);
   }
   host.querySelector('#settingGroupManageBar')?.remove();
   const tag=document.getElementById('settingsTag'),sort=document.getElementById('settingsSort'),search=document.getElementById('settingsSearch');
@@ -15228,11 +15240,11 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
    for(const select of [tag,sort]){
     // Native selects are hidden by the existing custom-select system. Move their visible companions too.
     const companion=select.nextElementSibling?.classList.contains('appSelectButton')?select.nextElementSibling:null;
-    line.append(select);
-    if(companion)line.append(companion);
+    if(select.parentElement!==line)line.append(select);
+    if(companion&&companion.parentElement!==line)line.append(companion);
     else try{syncAppSelect(select)}catch(_){}
    }
-   line.append(search);
+   if(search.parentElement!==line)line.append(search);
    for(const toolbar of [...host.querySelectorAll('.toolbar')])if(toolbar!==head&&!toolbar.contains(tag)&&!toolbar.contains(sort)&&!toolbar.contains(search))toolbar.classList.add('settingsOldFilterToolbar');
   }
   let strip=host.querySelector('.settingsCategoryStrip');
@@ -15249,7 +15261,7 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  function item(x){return '<div class="item '+(x.favorite?'favorite':'')+'" onclick="viewDoc(\'settings\',\''+x.id+'\')">'+itemTop(x.title,creativeStatusValue(x.status),esc(x.type)+' · '+fmt(x.updated),'settings',x)+'<div class="itemBody">'+tags(x.tags)+'<div class="chips">'+linkedChips(x.linkedIds)+'</div><div class="snippet">'+esc(x.body||'내용 없음')+'</div></div></div>'}
  renderSettings=function(){
   if(!creative())return baseRender();
-  decorate();
+  // Keep the existing input node stable while typing; rebuilding the toolbar blurs Android keyboards.
   // Keep the existing direct-sort interface intact.
   if(document.getElementById('fix25Sort_settings')?.textContent?.trim()==='정렬 완료')return baseRender();
   const arr=listData('settings',['title','type','tags','body','status','group']);
