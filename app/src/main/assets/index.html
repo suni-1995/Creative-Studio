@@ -15430,3 +15430,103 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  // The existing folder/type model and stored folder IDs are intentionally unchanged.
 })();
 </script>
+
+<!-- Serial editor unified navigation -->
+<style id="serialUnifiedLayout2026">
+#projectSerials .writingTypeFilterBar,#projectSerials #fix28SerialBar{display:none!important}
+#projectSerials .serialUnifiedHead{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px;flex-wrap:nowrap!important}
+#projectSerials .serialUnifiedHead>div:first-child{min-width:0;flex:1}
+#projectSerials .serialUnifiedHead h3{font-size:16px!important;white-space:nowrap}
+#projectSerials .serialUnifiedActions{display:flex;gap:5px;align-items:center;flex:0 0 auto}
+#projectSerials .serialUnifiedActions button{width:auto!important;min-width:0!important;white-space:nowrap!important;padding:11px 7px!important;margin:0!important;font-size:clamp(10px,2.7vw,13px)!important}
+#projectSerials .serialUnifiedFilters{display:grid!important;grid-template-columns:minmax(0,.8fr) minmax(0,.85fr) minmax(0,1.65fr);gap:7px;margin:10px 0;align-items:stretch}
+#projectSerials .serialUnifiedFilters>*{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;margin:0!important}
+#projectSerials .serialUnifiedFilters>.appSelectButton{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:10px 7px!important}
+#projectSerials .serialCategoryStrip{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:7px;width:100%;max-width:100%;padding:3px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+#projectSerials .serialCategoryStrip::-webkit-scrollbar{display:none}
+#projectSerials .serialCategoryStrip button{width:auto!important;flex:0 0 auto!important;border-radius:999px;padding:9px 13px;white-space:nowrap}
+#projectSerials .serialCategoryStrip button.active{background:var(--theme);color:white}
+@media(max-width:390px){#projectSerials .serialUnifiedActions{gap:3px}#projectSerials .serialUnifiedActions button{font-size:10px!important;padding:10px 5px!important}}
+</style>
+<script id="serialUnifiedLayoutLogic2026">
+(function(){
+ const TYPES=['All','본편','외전','IF','기타'];let active='All';
+ const baseSetup=setupSections,baseRender=renderSerials,baseNew=newSerial;
+ function creative(){return !!currentProjectId&&['advanced','general','short','fanwork'].includes(currentProjectType())}
+ function category(x){const t=String(x?.writingType||'').trim();return TYPES.includes(t)?t:(t==='잡썰'?'기타':'본편')}
+ function layout(){
+  if(!creative())return;
+  const host=document.getElementById('projectSerials');if(!host)return;
+  const head=[...host.querySelectorAll('.toolbar')].find(e=>e.querySelector('h3'));if(!head)return;
+  head.classList.add('serialUnifiedHead');
+  const add=[...head.querySelectorAll('button')].find(b=>b.textContent.includes('새 항목'));
+  if(add){
+   let actions=head.querySelector('.serialUnifiedActions');if(!actions){actions=document.createElement('div');actions.className='serialUnifiedActions';head.append(actions)}
+   for(const [id,label,fn] of [['serialUnifiedFile','파일 관리','fix28OpenSerialFolderManager'],['serialUnifiedOrder','순서 정렬','fix28OpenSerialOrderManager']]){
+    let b=document.getElementById(id);if(!b){b=document.createElement('button');b.id=id;b.type='button';b.textContent=label;b.onclick=()=>window[fn]?.()}
+    if(b.parentElement!==actions)actions.append(b);
+   }
+   if(add.parentElement!==actions)actions.append(add);
+  }
+  const tag=document.getElementById('serialsTag'),sort=document.getElementById('serialsSort'),search=document.getElementById('serialsSearch');
+  if(tag&&sort&&search){
+   let row=host.querySelector('.serialUnifiedFilters');if(!row){row=document.createElement('div');row.className='serialUnifiedFilters';head.after(row)}
+   for(const select of [tag,sort]){
+    const companion=select.nextElementSibling?.classList.contains('appSelectButton')?select.nextElementSibling:null;
+    if(select.parentElement!==row)row.append(select);
+    if(companion&&companion.parentElement!==row)row.append(companion);
+    if(!companion)try{syncAppSelect(select)}catch(_){}
+   }
+   if(search.parentElement!==row)row.append(search);
+  }
+  let strip=host.querySelector('.serialCategoryStrip');
+  if(!strip){strip=document.createElement('div');strip.className='serialCategoryStrip';(host.querySelector('.serialUnifiedFilters')||head).after(strip)}
+  for(const t of TYPES){
+   let b=[...strip.children].find(x=>x.dataset.serialCategory===t);
+   if(!b){b=document.createElement('button');b.type='button';b.dataset.serialCategory=t;b.textContent=t;strip.append(b)}
+   b.classList.toggle('active',t===active);b.onclick=()=>{active=t;renderSerials()};
+  }
+ }
+ setupSections=function(){const r=baseSetup();active='All';queueMicrotask(layout);return r};
+ renderSerials=function(){
+  const r=baseRender.apply(this,arguments);
+  if(!creative())return r;
+  layout();
+  const list=document.getElementById('serialsList');if(!list)return r;
+  if(active!=='All'){
+   for(const card of list.querySelectorAll('.item')){
+    const id=(card.getAttribute('data-bulk-id')||card.getAttribute('onclick')?.match(/viewSerial\('([^']+)'/)?.[1]);
+    const doc=(db.serials||[]).find(x=>x.id===id&&x.project===currentProjectId);
+    if(doc&&category(doc)!==active)card.remove();
+   }
+   for(const folder of list.querySelectorAll('.fix28SerialFolder')){
+    const count=folder.querySelectorAll('.item').length;
+    if(!count){folder.remove();continue}
+    const meta=folder.querySelector('.fix28FolderTitle .meta');if(meta)meta.textContent=count+'화';
+   }
+   for(const loose of list.querySelectorAll('.fix28SerialUnfiled'))if(!loose.querySelector('.item'))loose.remove();
+  }
+  return r;
+ };
+ newSerial=function(){
+  const result=baseNew.apply(this,arguments);
+  if(!creative())return result;
+  setTimeout(()=>{
+   const sel=document.getElementById('serialWritingType');if(!sel)return;
+   for(const o of [...sel.options])if(o.value==='잡썰'||o.textContent.trim()==='잡썰')o.remove();
+   if(sel.value==='잡썰')sel.value='기타';
+   try{syncAppSelect(sel)}catch(_){}
+  },0);
+  return result;
+ };
+ // Workspace breadcrumb is created by a separate late-bound navigation handler.
+ const view=document.getElementById('projectView');
+ if(view)view.addEventListener('click',e=>{
+  if(!e.target.closest('[data-hub-open="stories"]'))return;
+  setTimeout(()=>{
+   const back=document.getElementById('studioWorkspaceBack');
+   if(back)back.textContent=back.textContent.replace('썰 / 장문','장문');
+  },10);
+ });
+})();
+</script>
