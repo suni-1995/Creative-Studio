@@ -15348,3 +15348,85 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  };
 })();
 </script>
+
+<!-- Long-form writing layout: category chips mirror existing folder-type filter -->
+<style id="storyCategoryLayout2026">
+#projectStories .storyFolderBar,#projectStories .writingTypeFilterBar{display:none!important}
+#projectStories .storyHeadingRow{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:nowrap!important;justify-content:space-between!important}
+#projectStories .storyHeadingRow>div:first-child{flex:1 1 auto;min-width:0}
+#projectStories .storyHeadingRow h3{font-size:16px!important;white-space:nowrap}
+#projectStories .storyHeadingActions{display:flex;flex:0 0 auto;gap:5px;align-items:center}
+#projectStories .storyHeadingActions button{width:auto!important;min-width:0!important;white-space:nowrap!important;margin:0!important;padding:11px 7px!important;font-size:clamp(10px,2.7vw,13px)!important}
+#projectStories .storyFilterRow{display:grid!important;grid-template-columns:minmax(0,.8fr) minmax(0,.85fr) minmax(0,1.65fr);gap:7px;align-items:stretch;margin:10px 0}
+#projectStories .storyFilterRow>*{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;margin:0!important}
+#projectStories .storyFilterRow>.appSelectButton{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:10px 7px!important}
+#projectStories .storyCategoryStrip{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:7px;max-width:100%;width:100%;padding:3px 0 10px;scrollbar-width:none;touch-action:pan-x;-webkit-overflow-scrolling:touch}
+#projectStories .storyCategoryStrip::-webkit-scrollbar{display:none}
+#projectStories .storyCategoryStrip button{flex:0 0 auto!important;width:auto!important;border-radius:999px;padding:9px 13px;white-space:nowrap}
+#projectStories .storyCategoryStrip button.active{background:var(--theme);color:white}
+@media(max-width:390px){#projectStories .storyHeadingActions{gap:3px}#projectStories .storyHeadingActions button{font-size:10px!important;padding:10px 5px!important}}
+</style>
+<script id="storyCategoryLayoutLogic2026">
+(function(){
+ const types=['All','본편','외전','IF','잡썰','기타'];
+ let selected='All';
+ const originalSetup=setupSections,originalRender=renderStories,originalManager=openStoryFolderManager;
+ function creative(){return !!currentProjectId&&['advanced','general','short','fanwork'].includes(currentProjectType())}
+ function decorate(){
+  if(!creative())return;
+  const host=document.getElementById('projectStories');if(!host)return;
+  const head=[...host.querySelectorAll('.toolbar')].find(x=>x.querySelector('h3'));
+  if(!head)return;
+  head.classList.add('storyHeadingRow');
+  const heading=head.querySelector('h3');if(heading)heading.textContent='장문';
+  const add=[...host.querySelectorAll('button')].find(b=>(b.textContent||'').trim()==='+ 새 항목');
+  if(add){
+   let actions=head.querySelector('.storyHeadingActions');
+   if(!actions){actions=document.createElement('div');actions.className='storyHeadingActions';head.append(actions)}
+   let manage=document.getElementById('storyTopFolderManage');
+   if(!manage){manage=document.createElement('button');manage.type='button';manage.id='storyTopFolderManage';manage.textContent='폴더 관리';manage.onclick=()=>openStoryFolderManager()}
+   if(manage.parentElement!==actions)actions.append(manage);
+   const direct=document.getElementById('fix25Sort_stories');
+   if(direct&&direct.parentElement!==actions)actions.append(direct);
+   if(add.parentElement!==actions)actions.append(add);
+  }
+  const tag=document.getElementById('storiesTag'),sort=document.getElementById('storiesSort'),search=document.getElementById('storiesSearch');
+  if(tag&&sort&&search){
+   let row=host.querySelector('.storyFilterRow');
+   if(!row){row=document.createElement('div');row.className='storyFilterRow';head.after(row)}
+   for(const sel of [tag,sort]){
+    const button=sel.nextElementSibling?.classList.contains('appSelectButton')?sel.nextElementSibling:null;
+    if(sel.parentElement!==row)row.append(sel);
+    if(button&&button.parentElement!==row)row.append(button);
+    if(!button)try{syncAppSelect(sel)}catch(_){}
+   }
+   if(search.parentElement!==row)row.append(search);
+  }
+  let strip=host.querySelector('.storyCategoryStrip');
+  if(!strip){strip=document.createElement('div');strip.className='storyCategoryStrip';(host.querySelector('.storyFilterRow')||head).after(strip)}
+  for(const type of types){
+   let b=[...strip.children].find(x=>x.dataset.storyCategory===type);
+   if(!b){b=document.createElement('button');b.type='button';b.dataset.storyCategory=type;b.textContent=type;strip.append(b)}
+   b.classList.toggle('active',selected===type);
+   b.onclick=()=>{selected=type;const old=document.getElementById('storiesWritingTypeFilter');if(old){old.value=type==='All'?'':type;try{syncAppSelect(old)}catch(_){}}renderStories()};
+  }
+  // Retain the existing folder filter's "all folders" value without removing its data.
+  const folder=document.getElementById('storiesFolderFilter');if(folder&&folder.value!=='')folder.value='';
+ }
+ setupSections=function(){const result=originalSetup();selected='All';queueMicrotask(decorate);return result};
+ renderStories=async function(){
+  if(creative()){
+   decorate();
+   const sel=document.getElementById('storiesWritingTypeFilter');
+   if(sel){const value=selected==='All'?'':selected;if(sel.value!==value)sel.value=value}
+  }
+  return await originalRender.apply(this,arguments);
+ };
+ openStoryFolderManager=function(){
+  const result=originalManager.apply(this,arguments);
+  const title=document.querySelector('#modalCard h2');if(title&&title.textContent.includes('썰 / 장문'))title.textContent=title.textContent.replace('썰 / 장문','장문');
+  return result;
+ };
+ // The existing folder/type model and stored folder IDs are intentionally unchanged.
+})();
+</script>
