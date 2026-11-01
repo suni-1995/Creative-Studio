@@ -15646,3 +15646,47 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 <style id="settingsGroupManagerButtonSizing2026">.settingsManagedGroupRow{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px!important;align-items:center}.settingsManagedGroupRow>b{min-width:0;overflow-wrap:anywhere}.settingsManagedGroupRow>button{width:auto!important;min-width:64px!important;max-width:100px!important;flex:none!important;padding:10px 12px!important;margin:0!important}</style>
 
 <style id="settingsGroupRowsSpacing2026">#settingsGroupRows{display:grid!important;gap:10px!important;margin-top:10px!important}#settingsGroupRows>.settingsManagedGroupRow{margin:0!important}</style>
+
+<!-- Reader navigation: appended outside existing scripts and template strings -->
+<style id="readerNavigationLayout2026">
+#modalCard .fix26P2Reader>.readerNavigation2026{position:sticky;bottom:0;z-index:8;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:720px;margin:12px auto 0;padding:10px 0 12px;background:var(--card);border-top:1px solid var(--line)}
+#modalCard .readerNavigation2026>button{width:100%!important;min-width:0!important;min-height:48px!important;padding:10px 5px!important;margin:0!important;font-size:clamp(11px,3vw,14px)!important}
+#modalCard .readerNavigation2026>.readerClose2026{grid-column:1/-1}
+</style>
+<script id="readerNavigationLogic2026">
+(function(){
+ const card=document.getElementById('modalCard');
+ if(!card)return;
+ function arrange(){
+  const reader=card.querySelector('.fix26P2Reader');
+  if(!reader)return;
+  const footer=reader.querySelector('.fix26P2Footer:not(.fix27CwReaderFooter)');
+  if(!footer)return;
+  let bar=reader.querySelector(':scope > .readerNavigation2026');
+  if(!bar){bar=document.createElement('div');bar.className='readerNavigation2026';reader.appendChild(bar)}
+  const nav=reader.querySelector('#fix28FolderReaderNav');
+  if(nav){
+   const buttons=[...nav.querySelectorAll('button')];
+   if(buttons.length===2){buttons[0].dataset.readerNav='prev';buttons[1].dataset.readerNav='next';buttons.forEach(b=>bar.appendChild(b))}
+   nav.remove();
+  }
+  for(const b of [...footer.querySelectorAll('button')]){
+   if(b.textContent.trim()==='편집'){b.dataset.readerNav='edit';bar.appendChild(b)}
+   if(b.textContent.trim()==='닫기'){b.dataset.readerNav='close';b.classList.add('readerClose2026');bar.appendChild(b)}
+  }
+  const find=k=>bar.querySelector('[data-reader-nav="'+k+'"]');
+  for(const [kind,label] of [['prev','← 이전화'],['next','다음화 →']]){
+   if(!find(kind)){const b=document.createElement('button');b.type='button';b.disabled=true;b.textContent=label;b.dataset.readerNav=kind;bar.appendChild(b)}
+  }
+  for(const kind of ['prev','edit','next','close']){const b=find(kind);if(b)bar.appendChild(b)}
+ }
+ let pending=false;
+ const observer=new MutationObserver(()=>{
+  if(pending)return;
+  pending=true;
+  requestAnimationFrame(()=>{pending=false;arrange()});
+ });
+ observer.observe(card,{childList:true,subtree:true});
+ arrange();
+})();
+</script>
