@@ -15649,7 +15649,7 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 
 <!-- Reader navigation: appended outside existing scripts and template strings -->
 <style id="readerNavigationLayout2026">
-#modalCard .fix26P2Reader>.readerNavigation2026{position:sticky;bottom:0;z-index:8;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:720px;margin:12px auto 0;padding:10px 0 12px;background:var(--card);border-top:1px solid var(--line)}
+#modalCard .fix26P2Reader>.readerNavigation2026{position:sticky;bottom:0;z-index:8;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:720px;margin:12px auto 0;padding:10px 0 12px;background:var(--card);border-top:1px solid var(--line);isolation:isolate;box-shadow:0 18px 0 18px var(--card)}
 #modalCard .readerNavigation2026>button{width:100%!important;min-width:0!important;min-height:48px!important;padding:10px 5px!important;margin:0!important;font-size:clamp(11px,3vw,14px)!important}
 #modalCard .readerNavigation2026>.readerClose2026{grid-column:1/-1}
 </style>
