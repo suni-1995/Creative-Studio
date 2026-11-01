@@ -15215,7 +15215,7 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  let active='All';
  const baseSetup=setupSections,baseRender=renderSettings,baseList=listData,baseNew=newSetting,baseSave=saveSetting;
  const baseManager=openManagedGroupManager,baseOptions=managedGroupOptions;
- function creative(){return ['advanced','general','short','fanwork'].includes((db.projects||[]).find(p=>p.id===currentProjectId)?.projectType)}
+ function creative(){return !!currentProjectId && ['advanced','general','short','fanwork'].includes(currentProjectType())}
  function cat(x){return TYPES.includes(x?.type)?x.type:'기타'}
  function groups(){return (db.settingGroups||[]).filter(g=>g.project===currentProjectId)}
  function decorate(){
@@ -15257,6 +15257,10 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
   }
  }
  setupSections=function(){const r=baseSetup();active='All';decorate();return r};
+ // Reapply after project navigation recreates the settings markup.
+ const baseOpenProject=typeof openProject==='function'?openProject:null;
+ if(baseOpenProject)openProject=function(){const result=baseOpenProject.apply(this,arguments);queueMicrotask(()=>{if(creative()){decorate();renderSettings()}});return result};
+ document.addEventListener('click',function(e){if(e.target.closest('[data-setting-category]'))return;const host=document.getElementById('projectSettings');if(host&&!host.classList.contains('hidden')&&creative()&&!host.querySelector('.settingsCategoryStrip'))queueMicrotask(()=>{decorate();renderSettings()})},true);
  listData=function(kind,fields){const result=baseList(kind,fields);return kind==='settings'&&creative()&&active!=='All'?result.filter(x=>cat(x)===active):result};
  function item(x){return '<div class="item '+(x.favorite?'favorite':'')+'" onclick="viewDoc(\'settings\',\''+x.id+'\')">'+itemTop(x.title,creativeStatusValue(x.status),esc(x.type)+' · '+fmt(x.updated),'settings',x)+'<div class="itemBody">'+tags(x.tags)+'<div class="chips">'+linkedChips(x.linkedIds)+'</div><div class="snippet">'+esc(x.body||'내용 없음')+'</div></div></div>'}
  renderSettings=function(){
