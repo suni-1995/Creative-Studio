@@ -6174,6 +6174,7 @@ body.bulkSelecting .memoListCompact .memoCardCompact.bulkSelected > .meta{
       return `<div class="groupPanel ${open?'open':''} ${extraClass}"><div class="groupPanelHead"><div class="groupPanelTitleRow"><div class="groupPanelTitle">${title}</div><div class="groupPanelMeta">${groupExternalLinks(externalLinks).length?`<button type="button" class="groupExternalTrigger" title="외부 링크" onclick="event.stopPropagation();showGroupExternalLinks('${encodeURIComponent(JSON.stringify(groupExternalLinks(externalLinks)))}')">↗ ${groupExternalLinks(externalLinks).length}</button>`:''}<div class="groupPanelCount">${countText}</div></div></div></div><button type="button" class="groupPanelToggle" onclick="event.stopPropagation();groupPanelToggleEncoded('${sec}','${ky}')">${open?'▲ 접기':'▼ 열기'}</button>${open?`<div class="groupPanelBody">${groupLinkedChips(linkedIds)}${groupItemsScroller(bodyHtml)}</div>`:''}</div>`;
     }
 
+    window.settingsGroupPanelHtml=groupPanelHtml;
     function getManagedGroupsWithMeta(kind){
       const store=groupStoreName(kind);
       const arr=ensureManagedGroups(kind);
@@ -15278,8 +15279,8 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
   const panels=visibleGroups.map(g=>{
    const docs=(byGroup.get(g.name)||[]).filter(x=>active==='All'||cat(x)===active);
    byGroup.delete(g.name);
-   return groupPanelHtml('settings',g.id,esc(g.name),docs.length+'개',docs.map(item).join(''),g.linkedIds||[],'',g.externalLinks||[]);
-  }).join('')+[...byGroup].map(([name,docs])=>groupPanelHtml('settings',name,esc(name),docs.length+'개',docs.map(item).join(''),[])).join('');
+   return window.settingsGroupPanelHtml('settings',g.id,esc(g.name),docs.length+'개',docs.map(item).join(''),g.linkedIds||[],'',g.externalLinks||[]);
+  }).join('')+[...byGroup].map(([name,docs])=>window.settingsGroupPanelHtml('settings',name,esc(name),docs.length+'개',docs.map(item).join(''),[])).join('');
   host.innerHTML=rendered+panels||'<div class="empty">등록된 설정 문서가 없습니다.</div>';
  };
  function chosen(){return document.getElementById('stype')?.value|| (active==='All'?'세계관':active)}
@@ -15643,3 +15644,5 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 </script>
 
 <style id="settingsGroupManagerButtonSizing2026">.settingsManagedGroupRow{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px!important;align-items:center}.settingsManagedGroupRow>b{min-width:0;overflow-wrap:anywhere}.settingsManagedGroupRow>button{width:auto!important;min-width:64px!important;max-width:100px!important;flex:none!important;padding:10px 12px!important;margin:0!important}</style>
+
+<style id="settingsGroupRowsSpacing2026">#settingsGroupRows{display:grid!important;gap:10px!important;margin-top:10px!important}#settingsGroupRows>.settingsManagedGroupRow{margin:0!important}</style>
