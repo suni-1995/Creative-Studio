@@ -15746,7 +15746,10 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 
 <!-- Fanwork-only workspace, creative work preview and timeline adjustments -->
 <style id="fanworkNovemberLayout2026">
-#modalCard .fanworkPreviewActions2026{position:sticky;bottom:0;z-index:9;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0!important;margin:14px 0 0!important;background:var(--card);box-shadow:0 12px 0 12px var(--card)}
+#modalCard:has(.creativeWorkPreviewShell) .creativeWorkPreviewShell{display:contents!important}
+#modalCard:has(.creativeWorkPreviewShell){display:flex!important;flex-direction:column!important;min-height:0;padding-bottom:16px!important}
+#modalCard .fanworkPreviewActions2026{position:sticky;bottom:0;z-index:9;flex-shrink:0;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0!important;margin:14px 0 0!important;background:var(--card);box-shadow:0 10px 0 10px var(--card)}
+#modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{flex-shrink:0;box-sizing:border-box!important;border-radius:12px!important;min-height:48px!important;margin:12px 0 0!important;width:100%!important;overflow:visible!important}
 #modalCard .fanworkPreviewActions2026>button{width:100%!important;min-width:0!important;margin:0!important;grid-column:auto!important;padding:12px 6px!important}
 #projectTimeline.fanworkTimelineNoSource2026>.toolbar:first-child{display:flex!important;align-items:center!important}
 #projectTimeline.fanworkTimelineNoSource2026>.toolbar:first-child>div:first-child{flex:1;min-width:0}
