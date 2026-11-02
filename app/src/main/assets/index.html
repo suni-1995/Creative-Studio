@@ -15764,7 +15764,11 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 <style id="fanworkNovemberLayout2026">
 #modalCard .fanworkPreviewActions2026{position:sticky;bottom:0;z-index:9;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0!important;margin:14px 0 0!important;background:var(--card);box-shadow:0 10px 0 10px var(--card)}
 #modalCard .fanworkPreviewActions2026{background:#1e1e23!important;box-shadow:0 0 0 16px #1e1e23!important;isolation:isolate!important}
+/* Opaque fixed-height lower shield masks content that continues behind the sticky footer. */
+#modalCard .fanworkPreviewActions2026::after{content:'';position:absolute;left:-16px;right:-16px;top:100%;height:90px;background:#1e1e23;pointer-events:none;z-index:-1}
+#modalCard .fanworkPreviewActions2026{position:sticky!important;bottom:90px!important}
 :root:not([data-mode='dark']) #modalCard .fanworkPreviewActions2026{background:var(--card)!important;box-shadow:0 0 0 16px var(--card)!important}
+:root:not([data-mode='dark']) #modalCard .fanworkPreviewActions2026::after{background:var(--card)}
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{box-sizing:border-box!important;border-radius:12px!important;min-height:48px!important;margin:14px 0 12px!important;width:100%!important;overflow:visible!important}
 #modalCard:has(.fanworkPreviewActions2026){padding-bottom:28px!important;scroll-padding-bottom:24px!important}
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{display:block!important;position:relative!important;flex:none!important;line-height:1.5!important;padding:15px 12px!important;min-height:54px!important;margin-bottom:16px!important;border-radius:12px!important;clip-path:none!important;transform:none!important}
@@ -15852,7 +15856,7 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 #studioHub .studioOverviewStats::-webkit-scrollbar{display:none}
 #studioHub .studioOverviewStats .projectStats{display:flex!important;flex-wrap:nowrap!important;width:max-content;min-width:max-content;gap:8px}
 #studioHub .studioOverviewStats .statPill{flex:0 0 auto!important;white-space:nowrap!important;max-width:none!important}
-#studioHub .studioOverviewStats .statPill{font-size:13px!important;padding:8px 13px!important;line-height:1.5!important}
+#studioHub .studioOverviewStats .statPill{font-size:11px!important;padding:6px 10px!important;line-height:1.5!important}
 .projectCard .projectStats{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .projectCard .projectStats::-webkit-scrollbar{display:none}
 .projectCard .projectStats .statPill{flex:0 0 auto;white-space:nowrap}
