@@ -15843,3 +15843,14 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  window.expandedProjectStatsHtml=window.projectStatsHtml;
 })();
 </script>
+
+<style id="novemberStatsHorizontalScroll2026">
+/* Keep overview counters on one line and allow horizontal swiping on mobile. */
+#studioHub .studioOverviewStats{min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+#studioHub .studioOverviewStats::-webkit-scrollbar{display:none}
+#studioHub .studioOverviewStats .projectStats{display:flex!important;flex-wrap:nowrap!important;width:max-content;min-width:max-content;gap:8px}
+#studioHub .studioOverviewStats .statPill{flex:0 0 auto!important;white-space:nowrap!important;max-width:none!important}
+.projectCard .projectStats{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.projectCard .projectStats::-webkit-scrollbar{display:none}
+.projectCard .projectStats .statPill{flex:0 0 auto;white-space:nowrap}
+</style>
