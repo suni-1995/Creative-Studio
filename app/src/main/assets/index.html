@@ -15762,13 +15762,13 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 
 <!-- Fanwork-only workspace, creative work preview and timeline adjustments -->
 <style id="fanworkNovemberLayout2026">
-#modalCard .fanworkPreviewActions2026{position:sticky;bottom:0;z-index:9;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0!important;margin:14px 0 0!important;background:var(--card);box-shadow:0 10px 0 10px var(--card)}
-#modalCard .fanworkPreviewActions2026{background:#1e1e23!important;box-shadow:0 0 0 16px #1e1e23!important;isolation:isolate!important}
+
+
 /* Opaque fixed-height lower shield masks content that continues behind the sticky footer. */
-#modalCard .fanworkPreviewActions2026::after{content:'';position:absolute;left:-16px;right:-16px;top:100%;height:90px;background:#1e1e23;pointer-events:none;z-index:-1}
-#modalCard .fanworkPreviewActions2026{position:sticky!important;bottom:90px!important}
-:root:not([data-mode='dark']) #modalCard .fanworkPreviewActions2026{background:var(--card)!important;box-shadow:0 0 0 16px var(--card)!important}
-:root:not([data-mode='dark']) #modalCard .fanworkPreviewActions2026::after{background:var(--card)}
+
+
+:root:not([data-mode='dark']) 
+:root:not([data-mode='dark']) 
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{box-sizing:border-box!important;border-radius:12px!important;min-height:48px!important;margin:14px 0 12px!important;width:100%!important;overflow:visible!important}
 #modalCard:has(.fanworkPreviewActions2026){padding-bottom:28px!important;scroll-padding-bottom:24px!important}
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{display:block!important;position:relative!important;flex:none!important;line-height:1.5!important;padding:15px 12px!important;min-height:54px!important;margin-bottom:16px!important;border-radius:12px!important;clip-path:none!important;transform:none!important}
@@ -15834,18 +15834,25 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 </script>
 
 <style id="novemberOverviewAndFooterCorrection">
-:root[data-mode="dark"] #modalCard .fanworkPreviewActions2026{background:#1e1e23!important;box-shadow:0 0 0 14px #1e1e23!important;isolation:isolate}
+:root[data-mode="dark"] 
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{border-radius:14px!important;overflow:hidden!important;clip-path:none!important;box-shadow:none!important;min-height:52px!important;line-height:22px!important;padding:14px 12px!important;margin:14px 0 20px!important}
 #modalCard:has(.fanworkPreviewActions2026){padding-bottom:30px!important}
 :root[data-mode="dark"] .studioOverviewStats .statPill{background:#080808!important;color:#fff!important;border:1px solid #fff!important}
-#modalCard .fanworkPreviewActions2026::after{content:""!important;display:block!important;position:absolute!important;left:-16px!important;right:-16px!important;top:100%!important;height:160px!important;background:var(--card)!important;pointer-events:none!important;z-index:2!important}
-#modalCard .fanworkPreviewActions2026.fanworkActionsAtEnd2026::after{display:none!important}
+
+
 /* Fanwork preview: opaque sticky actions at the viewport bottom, in document order. */
-#modalCard .fanworkPreviewActions2026{position:sticky!important;bottom:0!important;z-index:20!important;margin:16px 0 0!important;padding:12px 0!important;background:var(--card)!important;box-shadow:0 0 0 16px var(--card)!important;isolation:isolate!important}
-#modalCard .fanworkPreviewActions2026::after{content:""!important;display:block!important;position:absolute!important;left:-20px!important;right:-20px!important;top:100%!important;height:180px!important;background:#1e1e23!important;pointer-events:none!important;z-index:2!important}
+
+
+:root:not([data-mode="dark"]) 
+
+#modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{position:relative!important;z-index:1!important;margin-top:14px!important}
+
+/* Keep the action grid flush with the bottom of the scrolling viewport. */
+#modalCard .fanworkPreviewActions2026{position:sticky!important;bottom:0!important;z-index:30!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0 0!important;margin:14px 0 0!important;background:#1e1e23!important;box-shadow:0 0 0 20px #1e1e23!important;isolation:isolate!important}
+#modalCard .fanworkPreviewActions2026::after{content:""!important;position:absolute!important;display:block!important;top:100%!important;left:-20px!important;right:-20px!important;height:220px!important;background:#1e1e23!important;pointer-events:none!important}
+:root:not([data-mode="dark"]) #modalCard .fanworkPreviewActions2026{background:var(--card)!important;box-shadow:0 0 0 20px var(--card)!important}
 :root:not([data-mode="dark"]) #modalCard .fanworkPreviewActions2026::after{background:var(--card)!important}
 #modalCard .fanworkPreviewActions2026.fanworkActionsAtEnd2026::after{display:none!important}
-#modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{position:relative!important;z-index:1!important;margin-top:14px!important}
 </style>
 <script id="novemberOverviewAndFooterCorrectionScript">
 (function(){
