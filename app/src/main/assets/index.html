@@ -15807,9 +15807,12 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
   grid.classList.add('fanworkPreviewActions2026');
   // Sticky positioning must be relative to the scrolling modalCard, not the short preview shell.
   // Move only the four-button grid to a direct child; keep scroll-to-top in normal document flow.
+  // Place actions after ALL preview content, never midway through the document.
+  // The scroll-top control stays immediately after the actions at the true end.
   if(grid.parentElement!==card)card.appendChild(grid);
   const top=card.querySelector(':scope > .modalBottomScrollTop');
-  if(top)card.insertBefore(grid,top);
+  if(top)card.appendChild(top);
+  else card.appendChild(grid);
  }
  const preview=window.openCreativeWorkPreview;
  if(typeof preview==='function')window.openCreativeWorkPreview=async function(){
@@ -15830,6 +15833,10 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{border-radius:14px!important;overflow:hidden!important;clip-path:none!important;box-shadow:none!important;min-height:52px!important;line-height:22px!important;padding:14px 12px!important;margin:14px 0 20px!important}
 #modalCard:has(.fanworkPreviewActions2026){padding-bottom:30px!important}
 :root[data-mode="dark"] .studioOverviewStats .statPill{background:#080808!important;color:#fff!important;border:1px solid #fff!important}
+/* Fanwork preview: opaque sticky actions at the viewport bottom, in document order. */
+#modalCard .fanworkPreviewActions2026{position:sticky!important;bottom:0!important;z-index:20!important;margin:16px 0 0!important;padding:12px 0!important;background:var(--card)!important;box-shadow:0 0 0 16px var(--card)!important;isolation:isolate!important}
+#modalCard .fanworkPreviewActions2026::after{content:none!important}
+#modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{position:relative!important;z-index:1!important;margin-top:14px!important}
 </style>
 <script id="novemberOverviewAndFooterCorrectionScript">
 (function(){
