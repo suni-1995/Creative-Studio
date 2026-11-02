@@ -860,6 +860,22 @@ const __saveProjectExpandedBase=saveProject;
 saveProject=function(id){let name=v('pname').trim();if(!name)return alert('프로젝트 이름을 입력해 주세요.');let old=db.projects.find(x=>x.id===id);upsert('projects',{...old,id,name,desc:v('pdesc'),color:v('pcolor'),projectType:(document.getElementById('ptype')?.dataset.selected||v('ptype')||'general'),projectTypeVersion:2,coverImageId:v('pcover')||'',created:old?.created||Date.now(),updated:Date.now()});closeModal();if(currentProjectId===id)openProject(id)};
 
 function expandedProjectStatsHtml(p){let t=p.projectType||'general',items=[];if(t==='memo')items=[['메모',(db.quickMemos||[]).filter(x=>x.project===p.id).length]];else if(t==='diary')items=[['일기',(db.diaries||[]).filter(x=>x.project===p.id).length],['그림일기',(db.pictureDiaries||[]).filter(x=>x.project===p.id).length]];else{items=[['설정',cnt('settings',p.id)],['캐릭터',cnt('characters',p.id)],['썰',cnt('stories',p.id)],['연재본',cnt('serials',p.id)]];if(t!=='short')items.push(['관계도',cnt('relations',p.id)],['타임라인',cnt('timeline',p.id)])}return `<div class="projectStats">${items.map(([k,v])=>`<span class="statPill">${k} ${v}</span>`).join('')}</div>`}
+
+// Overview pills: long-form stories and thread-format posts are separate counts.
+expandedProjectStatsHtml=function(p){
+ const t=p.projectType||'general';
+ let items=[];
+ if(t==='memo')items=[['메모',(db.quickMemos||[]).filter(x=>x.project===p.id).length]];
+ else if(t==='diary')items=[['일기',(db.diaries||[]).filter(x=>x.project===p.id).length],['그림일기',(db.pictureDiaries||[]).filter(x=>x.project===p.id).length]];
+ else{
+  items=[['설정',cnt('settings',p.id)],['캐릭터',cnt('characters',p.id)]];
+  if(t!=='fanwork')items.push(['장문',cnt('stories',p.id)]);
+  items.push(['썰',(db.socialPosts||[]).filter(x=>x.project===p.id&&x.threadId).length]);
+  items.push(['연재본',cnt('serials',p.id)]);
+  if(t!=='short')items.push(['관계도',cnt('relations',p.id)],['타임라인',cnt('timeline',p.id)]);
+ }
+ return '<div class="projectStats">'+items.map(([k,v])=>'<span class="statPill">'+k+' '+v+'</span>').join('')+'</div>';
+};
 projectStatsHtml=expandedProjectStatsHtml;
 
 renderProjects=async function(){let q=v('projectSearch').toLowerCase(),mode=v('projectSort')||'latest',arr=sortArr(db.projects.filter(p=>`${p.name} ${p.desc||''}`.toLowerCase().includes(q)),mode),shown=arr.slice(0,limits.projects),blocks=[];for(let p of shown){let cover='';if(p.coverImageId)cover=await getFile(p.coverImageId);blocks.push(`<div class="card projectCard" style="--pcolor:${p.color||'#7b61a8'}" onclick="openProject('${p.id}')"><div class="projectHead ${cover?'hasCover':''}">${cover?`<img class="projectCover" src="${cover}" alt="">`:''}<div class="projectTitleWrap"><h3>${esc(p.name)}</h3><div class="meta">${fmt(p.updated||p.created)}</div></div><span class="typeBadge">${projectTypeLabel(p.projectType)}</span></div><div class="projectDesc">${esc(p.desc||'설명 없음')}</div>${expandedProjectStatsHtml(p)}<div class="projectActions"><button onclick="event.stopPropagation();newProject(${encodeObj(p)})">수정</button><button class="danger" onclick="event.stopPropagation();trashProject('${p.id}')">삭제</button></div></div>`)}document.getElementById('projectList').innerHTML=blocks.length?blocks.join(''):'<div class="empty">새 프로젝트를 만들어 보세요.</div>';toggleMore('projectMore',arr.length,limits.projects);setTimeout(()=>animateStagger(document.getElementById('projectList')),20)};
@@ -15748,9 +15764,12 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 <style id="fanworkNovemberLayout2026">
 #modalCard .fanworkPreviewActions2026{position:sticky;bottom:0;z-index:9;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0!important;margin:14px 0 0!important;background:var(--card);box-shadow:0 10px 0 10px var(--card)}
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{box-sizing:border-box!important;border-radius:12px!important;min-height:48px!important;margin:14px 0 12px!important;width:100%!important;overflow:visible!important}
+#modalCard:has(.fanworkPreviewActions2026){padding-bottom:28px!important;scroll-padding-bottom:24px!important}
+#modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{display:block!important;position:relative!important;flex:none!important;line-height:1.5!important;padding:15px 12px!important;min-height:54px!important;margin-bottom:16px!important;border-radius:12px!important;clip-path:none!important;transform:none!important}
 #modalCard .fanworkPreviewActions2026>button{width:100%!important;min-width:0!important;margin:0!important;grid-column:auto!important;padding:12px 6px!important}
 #projectTimeline.fanworkTimelineNoSource2026>.toolbar:first-child{display:flex!important;align-items:center!important}
 #projectTimeline.fanworkTimelineNoSource2026>.toolbar:first-child>div:first-child{flex:1;min-width:0}
+:root[data-mode="dark"] .projectStats .statPill{background:#080808!important;border:1px solid #fff!important;color:#fff!important}
 </style>
 <script id="fanworkNovemberLayoutLogic2026">
 (function(){
