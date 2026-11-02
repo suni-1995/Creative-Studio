@@ -15818,3 +15818,28 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  queueMicrotask(adjustTimeline);
 })();
 </script>
+
+<style id="novemberOverviewAndFooterCorrection">
+:root[data-mode="dark"] #modalCard .fanworkPreviewActions2026{background:#1e1e23!important;box-shadow:0 0 0 14px #1e1e23!important;isolation:isolate}
+#modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{border-radius:14px!important;overflow:hidden!important;clip-path:none!important;box-shadow:none!important;min-height:52px!important;line-height:22px!important;padding:14px 12px!important;margin:14px 0 20px!important}
+#modalCard:has(.fanworkPreviewActions2026){padding-bottom:30px!important}
+:root[data-mode="dark"] .studioOverviewStats .statPill{background:#080808!important;color:#fff!important;border:1px solid #fff!important}
+</style>
+<script id="novemberOverviewAndFooterCorrectionScript">
+(function(){
+ // Install after all historical project-type wrappers, which previously replaced the stats renderer.
+ function counts(p){
+  const t=p.projectType||'general';
+  if(t==='sns'||t==='memo'||t==='diary'||t==='ledger')return null;
+  const items=[['설정',cnt('settings',p.id)],['캐릭터',cnt('characters',p.id)]];
+  if(t!=='fanwork')items.push(['장문',cnt('stories',p.id)]);
+  items.push(['썰',(db.socialPosts||[]).filter(x=>x.project===p.id).length]);
+  items.push(['연재본',cnt('serials',p.id)]);
+  if(t!=='short')items.push(['관계도',cnt('relations',p.id)],['타임라인',cnt('timeline',p.id)]);
+  return '<div class="projectStats">'+items.map(([k,v])=>'<span class="statPill">'+k+' '+v+'</span>').join('')+'</div>';
+ }
+ const prior=window.projectStatsHtml;
+ window.projectStatsHtml=function(p){return counts(p)??prior(p)};
+ window.expandedProjectStatsHtml=window.projectStatsHtml;
+})();
+</script>
