@@ -8428,7 +8428,7 @@ html[data-mode="dark"] .memoProjectCard .projectActions .memoCountInline{backgro
   listData=function(kind,fields){let a=_listData(kind,fields);return isFan()&&SOURCE_KINDS.has(kind)&&filters[kind]?a.filter(x=>(x.fanSource||'fan')===filters[kind]):a};
   window.fix27SetSourceFilter=(kind,val)=>{filters[kind]=val||'';({settings:renderSettings,characters:renderCharacters,relations:renderRelations,timeline:renderTimeline}[kind])?.()};
   function installFilter(kind){if(!isFan())return;const sec=document.getElementById('project'+kind[0].toUpperCase()+kind.slice(1));if(!sec||sec.querySelector('.fanworkSourceFilter'))return;const bar=sec.querySelectorAll('.toolbar')[1]||sec.querySelector('.toolbar');if(!bar)return;const host=bar.querySelector('.right')||bar,s=document.createElement('select');s.className='filterSel fanworkSourceFilter';s.innerHTML='<option value="">출처 전체</option><option value="original">원작</option><option value="fan">2차 창작</option><option value="mixed">혼합</option>';s.value=filters[kind];s.onchange=()=>fix27SetSourceFilter(kind,s.value);host.prepend(s);try{syncAppSelect(s)}catch(_){ }}
-  function installFilters(){['settings','characters','timeline'].forEach(installFilter)}
+  function installFilters(){['settings','characters'].forEach(installFilter)}
   function findId(el,kind){const s=el.getAttribute('onclick')||'';return s.match(new RegExp("viewDoc\\('"+kind+"','([^']+)'\\)"))?.[1]||s.match(new RegExp("fix25MoveItemStable\\('"+kind+"','([^']+)'"))?.[1]||''}
   function decorate(kind){if(!isFan())return;const list=document.getElementById(kind+'List');if(!list)return;list.querySelectorAll('.item[onclick],.fix25OrderRow').forEach(el=>{if(el.querySelector('.fanSourceBadge'))return;const id=findId(el,kind),d=id&&getDoc(kind,id);if(!d)return;const b=document.createElement('span');b.className='fanSourceBadge';b.textContent=srcLabel(d.fanSource||'fan');const line=el.querySelector('.itemTitleLine,.timelineTitleLine');if(line)line.appendChild(b);else el.querySelector('b')?.insertAdjacentElement('afterend',b)})}
   function decorateAll(){['settings','characters','timeline'].forEach(decorate)}
@@ -11568,7 +11568,7 @@ async function renderHub(){
  const groups=p.projectType==='ledger'?[['가계부 작업',['recent','calendar','settings']]]:[['문서 작업',['quickMemos','diaries','pictureDiaries','calendar','settings','sseol','stories','serials',...(p.projectType==='fanwork'?['creativeWorks']:[])]],[p.projectType==='diary'?'계획 구성':'세계관 구성',['characters','relations','timeline']],['자료 관리',['images','videos','sources']]];
  const overview=`<div class="studioHubCover" style="--cover:${/^#[0-9a-fA-F]{3,8}$/.test(p.color||'')?p.color:'#293d5a'}">${pic}</div><div class="studioHubTitle"><div style="min-width:0"><h2>${safe(p.name)}</h2><small>${date(p.updated||p.created)}</small></div><button data-hub-edit="1">프로젝트 편집</button></div><div class="studioOverviewStats">${typeof projectStatsHtml==='function'?projectStatsHtml(p):''}</div><div class="studioHubDescription">${safe(p.desc||'설명이 없습니다.')}</div><div class="studioHubGroup"><h3>최근 문서</h3><button data-hub="workspace">작업 공간으로 이동 ›</button></div>`;
  const categories=groups.map(([title,keys])=>{
-   const available=buttons.filter(b=>keys.includes(b.dataset.subtab)&&!((showQuick||ledgerQuick)&&b.dataset.subtab==='quickMemos'));
+   const available=buttons.filter(b=>keys.includes(b.dataset.subtab)&&!(p.projectType==='fanwork'&&b.dataset.subtab==='stories')&&!((showQuick||ledgerQuick)&&b.dataset.subtab==='quickMemos'));
    return available.length?`<div class="studioHubGroup"><h3>${title}</h3><div class="studioHubGrid ${available.length===3?'studioHubGridThree':''}">${available.map(b=>`<button data-hub-open="${safe(b.dataset.subtab)}"><span>${icons[b.dataset.subtab]||'▤'}</span><span class="studioHubButtonLabel">${safe(b.textContent||labels[b.dataset.subtab]||'작업')}</span></button>`).join('')}</div></div>`:'';
  }).join('');
  const embedded=direct||showQuick||ledgerQuick;
@@ -15741,5 +15741,57 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
  let pending=false;
  const obs=new MutationObserver(()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;arrange()})});
  obs.observe(host,{childList:true,subtree:true});arrange();
+})();
+</script>
+
+<!-- Fanwork-only workspace, creative work preview and timeline adjustments -->
+<style id="fanworkNovemberLayout2026">
+#modalCard .fanworkPreviewActions2026{position:sticky;bottom:0;z-index:9;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0!important;margin:14px 0 0!important;background:var(--card);box-shadow:0 12px 0 12px var(--card)}
+#modalCard .fanworkPreviewActions2026>button{width:100%!important;min-width:0!important;margin:0!important;grid-column:auto!important;padding:12px 6px!important}
+#projectTimeline.fanworkTimelineNoSource2026>.toolbar:first-child{display:flex!important;align-items:center!important}
+#projectTimeline.fanworkTimelineNoSource2026>.toolbar:first-child>div:first-child{flex:1;min-width:0}
+</style>
+<script id="fanworkNovemberLayoutLogic2026">
+(function(){
+ function fan(){return typeof currentProjectType==='function'&&currentProjectType()==='fanwork'}
+ function adjustTimeline(){
+  const host=document.getElementById('projectTimeline');if(!host)return;
+  host.classList.toggle('fanworkTimelineNoSource2026',fan());
+  if(!fan())return;
+  const source=host.querySelector('.fanworkSourceFilter');
+  if(source){source.value='';source.remove()}
+  // The source selector is a project-type filter, not a timeline category.
+  const bar=host.querySelector(':scope > .toolbar');
+  if(bar){const title=bar.querySelector('h3');if(title)title.style.marginLeft='0'}
+ }
+ function adjustPreview(){
+  if(!fan())return;
+  const card=document.getElementById('modalCard');if(!card||card.classList.contains('hidden'))return;
+  const shell=card.querySelector('.creativeWorkPreviewShell');if(!shell)return;
+  const footer=shell.querySelector(':scope > .right');if(!footer)return;
+  let grid=footer.querySelector('.fix27CwActionGrid')||footer;
+  const buttons=[...grid.querySelectorAll('button')];
+  if(!buttons.length)return;
+  const byLabel=label=>buttons.find(b=>b.textContent.trim()===label);
+  const txt=byLabel('TXT'),pdf=byLabel('PDF'),edit=byLabel('편집'),close=byLabel('닫기');
+  if(!txt||!pdf||!edit||!close)return;
+  buttons.forEach(b=>{if(![txt,pdf,edit,close].includes(b))b.remove()});
+  grid.append(txt,pdf,edit,close);
+  grid.classList.remove('cwCount2','cwCount3','cwCount4','cwCount5','cwCount6');
+  grid.classList.add('fanworkPreviewActions2026');
+  // Keep the action row immediately above the existing scroll-to-top button.
+  if(grid!==footer)footer.classList.add('fanworkPreviewActionsHost2026');
+ }
+ const preview=window.openCreativeWorkPreview;
+ if(typeof preview==='function')window.openCreativeWorkPreview=async function(){
+  const result=await preview.apply(this,arguments);
+  setTimeout(adjustPreview,260);
+  return result;
+ };
+ const render=window.renderTimeline;
+ if(typeof render==='function')window.renderTimeline=function(){const result=render.apply(this,arguments);Promise.resolve(result).then(adjustTimeline);return result};
+ const open=window.openProject;
+ if(typeof open==='function')window.openProject=function(){const result=open.apply(this,arguments);Promise.resolve(result).then(()=>setTimeout(adjustTimeline,0));return result};
+ queueMicrotask(adjustTimeline);
 })();
 </script>
