@@ -15842,12 +15842,10 @@ body:has(#projectRecent:not(.hidden) .snsProjectShell) #scrollTopBtn{
 
 #modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{position:relative!important;z-index:1!important;margin-top:14px!important}
 
-/* Keep the action grid flush with the bottom of the scrolling viewport. */
-#modalCard .fanworkPreviewActions2026{position:sticky!important;bottom:0!important;z-index:30!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0 0!important;margin:14px 0 0!important;background:#1e1e23!important;box-shadow:0 0 0 20px #1e1e23!important;isolation:isolate!important}
-#modalCard .fanworkPreviewActions2026::after{content:""!important;position:absolute!important;display:block!important;top:100%!important;left:-20px!important;right:-20px!important;height:220px!important;background:#1e1e23!important;pointer-events:none!important}
-#modalCard .fanworkPreviewActions2026{background:var(--card)!important;box-shadow:0 0 0 20px var(--card)!important}
-#modalCard .fanworkPreviewActions2026::after{background:var(--card)!important}
-#modalCard .fanworkPreviewActions2026.fanworkActionsAtEnd2026::after{display:none!important}
+/* The sticky actions cover the lower modal area; the scroll-to-top control stays above the cover. */
+#modalCard .fanworkPreviewActions2026{position:sticky!important;bottom:0!important;z-index:30!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;padding:12px 0!important;margin:14px 0 0!important;background:var(--card)!important;box-shadow:0 0 0 20px var(--card)!important;isolation:isolate!important}
+#modalCard .fanworkPreviewActions2026::after{content:""!important;display:block!important;position:absolute!important;top:100%!important;left:-20px!important;right:-20px!important;height:220px!important;background:var(--card)!important;pointer-events:none!important;z-index:-1!important}
+#modalCard:has(.fanworkPreviewActions2026)>.modalBottomScrollTop{position:relative!important;z-index:40!important}
 </style>
 <script id="novemberOverviewAndFooterCorrectionScript">
 (function(){
