@@ -12510,6 +12510,41 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
  refresh();
 })();
 </script>
+
+<!-- Long-form and serial preview footer only; reading modes and comments unchanged. -->
+<style id="studioLongPreviewStickyFooter20261103">
+#modalCard>.studioLongPreviewActions{position:sticky!important;bottom:0!important;z-index:30!important;display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:9px!important;margin:14px 0 0!important;padding:12px 0!important;background:var(--card)!important;box-shadow:0 0 0 20px var(--card)!important;isolation:isolate!important}
+#modalCard>.studioLongPreviewActions>button{width:100%!important;min-width:0!important;min-height:44px!important;margin:0!important}
+#modalCard>.studioLongPreviewActions>button:nth-child(-n+2){grid-column:span 3!important}
+#modalCard>.studioLongPreviewActions>button:nth-child(n+3){grid-column:span 2!important}
+#modalCard>.studioLongPreviewActions::after{content:"";position:absolute;top:100%;left:-20px;right:-20px;height:220px;background:var(--card);pointer-events:none;z-index:-1}
+#modalCard:has(>.studioLongPreviewActions)>.modalBottomScrollTop{position:relative!important;z-index:40!important;margin-top:14px!important}
+</style>
+<script id="studioLongPreviewStickyFooterLogic20261103">
+(function(){
+ const types=new Set(['general','advanced','short']);
+ function apply(kind){
+  if(!types.has(currentProjectType())||!['stories','serials'].includes(kind))return;
+  const card=document.getElementById('modalCard');
+  if(!card||card.classList.contains('hidden')||card.classList.contains('fix26P2ReaderCard'))return;
+  const foot=card.querySelector('.stack > .detailFooter');
+  if(!foot||foot.classList.contains('studioLongPreviewActions'))return;
+  const buttons=Array.from(foot.querySelectorAll(':scope > button'));
+  const get=label=>buttons.find(b=>b.textContent.trim()===label);
+  const read=get('읽기'),edit=get('수정'),pdf=get('PDF'),txt=get('TXT'),copy=get('복사');
+  if(!read||!edit||!pdf||!txt||!copy)return;
+  foot.replaceChildren(read,edit,pdf,txt,copy);
+  foot.classList.add('studioLongPreviewActions');
+  card.appendChild(foot);
+  const top=card.querySelector(':scope > .modalBottomScrollTop');
+  if(top)card.appendChild(top);
+ }
+ const oldDoc=window.viewDoc;
+ window.viewDoc=async function(kind){const result=await oldDoc.apply(this,arguments);if(kind==='stories')setTimeout(()=>apply(kind),90);return result};
+ const oldSerial=window.viewSerial;
+ window.viewSerial=function(){const result=oldSerial.apply(this,arguments);setTimeout(()=>apply('serials'),90);return result};
+})();
+</script>
 </body>
 </html>
 
