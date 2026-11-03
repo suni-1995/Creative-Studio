@@ -2476,6 +2476,8 @@ syncCurrentExportProject();
 .timelineSubTitleSmall{font-size:12px;font-weight:760;color:var(--muted)}
 .timelineSubList{display:grid;gap:8px}
 .timelineSubItem{padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.timelineSubItem[role="button"]{cursor:pointer}
+.timelineSubItem[role="button"]:focus-visible{outline:2px solid var(--theme);outline-offset:2px}
 .timelineSubItemHead{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .timelineSubItemTitle{font-weight:760;line-height:1.4;word-break:break-word}
 .timelineSubItemActions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -2538,7 +2540,7 @@ syncCurrentExportProject();
   }
   function timelineSubItemHtml(parentId,s,opts={}){
     const showActions=!!opts.actions;
-    return `<div class="timelineSubItem"><div class="timelineSubItemHead"><div class="timelineSubItemTitle">${esc(s.title||'세부 사건')}</div>${showActions?`<div class="timelineSubItemActions"><button type="button" onclick="openTimelineSubeventEditor('${parentId}','${s.id}')">수정</button><button type="button" class="danger" onclick="deleteTimelineSubevent('${parentId}','${s.id}')">삭제</button></div>`:''}</div><div class="timelineSubItemBody">${esc(timelineSubPreviewBody(s.body))}</div>${(s.linkedIds||[]).length?`<div class="chips">${linkedChips(s.linkedIds||[])}</div>`:''}</div>`;
+    return `<div class="timelineSubItem" role="button" tabindex="0" onclick="if(!event.target.closest('button,a,.chips'))openTimelineSubeventDetail('${parentId}','${s.id}')" onkeydown="if((event.key==='Enter'||event.key===' ')&&event.target===this){event.preventDefault();openTimelineSubeventDetail('${parentId}','${s.id}')}"><div class="timelineSubItemHead"><div class="timelineSubItemTitle">${esc(s.title||'세부 사건')}</div>${showActions?`<div class="timelineSubItemActions"><button type="button" onclick="openTimelineSubeventEditor('${parentId}','${s.id}')">수정</button><button type="button" class="danger" onclick="deleteTimelineSubevent('${parentId}','${s.id}')">삭제</button></div>`:''}</div><div class="timelineSubItemBody">${esc(timelineSubPreviewBody(s.body))}</div>${(s.linkedIds||[]).length?`<div class="chips">${linkedChips(s.linkedIds||[])}</div>`:''}</div>`;
   }
   function timelineSubWrapHtml(parentId,scope='list',opts={}){
     const parent=getDoc('timeline',parentId); if(!parent) return '';
@@ -2577,6 +2579,13 @@ syncCurrentExportProject();
     const existing=parent.subEvents.find(s=>s.id===subId) || {id:uid(),title:'',body:'',linkedIds:[]};
     openModal(`<div class="stack"><h2>${subId?'세부 사건 수정':'세부 사건 추가'}</h2><div class="note">세부 사건은 상위 타임라인 항목 안에서만 관리됩니다.</div><input id="timelineSubTitle" placeholder="세부 사건 제목" value="${esc(existing.title||'')}"><textarea id="timelineSubBody" placeholder="세부 사건 내용을 입력해 주세요." style="min-height:150px">${esc(existing.body||'')}</textarea>${timelineSubLinkedPicker(existing.linkedIds||[])}<div class="right">${subId?`<button class="danger" onclick="deleteTimelineSubevent('${parentId}','${existing.id}')">삭제</button>`:''}<button onclick="viewDoc('timeline','${parentId}')">취소</button><button class="primary" onclick="saveTimelineSubevent('${parentId}','${existing.id}')">저장</button></div></div>`);
     const c=document.getElementById('modalCard'); if(c) c.scrollTop=0;
+  };
+  window.openTimelineSubeventDetail=function(parentId,subId){
+    const parent=getDoc('timeline',parentId);
+    if(!parent)return alert('타임라인 항목을 찾을 수 없습니다.');
+    const sub=ensureTimelineSubevents(parent).find(s=>s.id===subId);
+    if(!sub)return alert('세부 사건을 찾을 수 없습니다.');
+    openModal(`<div class="stack"><h2>${esc(sub.title||'세부 사건')}</h2><div class="note">세부 사건</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;min-height:80px">${esc(sub.body||'내용 없음')}</div>${(sub.linkedIds||[]).length?`<div class="linkedBox"><b>연결 문서</b><div class="chips">${linkedChips(sub.linkedIds)}</div></div>`:''}<div class="right"><button onclick="viewDoc('timeline','${parentId}')">돌아가기</button><button class="primary" onclick="openTimelineSubeventEditor('${parentId}','${subId}')">수정</button></div></div>`);
   };
   window.saveTimelineSubevent=function(parentId,subId){
     const parent=getDoc('timeline',parentId); if(!parent) return alert('타임라인 항목을 찾을 수 없습니다.');
