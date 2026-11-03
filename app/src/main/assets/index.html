@@ -12535,6 +12535,11 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
   if(!read||!edit||!pdf||!txt||!copy)return;
   foot.replaceChildren(read,edit,pdf,txt,copy);
   foot.classList.add('studioLongPreviewActions');
+  // Existing preview footer has a three-column inline grid rule; override it explicitly.
+  foot.style.setProperty('display','grid','important');
+  foot.style.setProperty('grid-template-columns','repeat(6,minmax(0,1fr))','important');
+  foot.style.setProperty('grid-auto-flow','row','important');
+  [read,edit,pdf,txt,copy].forEach((button,index)=>button.style.setProperty('grid-column',index<2?'span 3':'span 2','important'));
   card.appendChild(foot);
   const top=card.querySelector(':scope > .modalBottomScrollTop');
   if(top)card.appendChild(top);
