@@ -12583,6 +12583,10 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
 .snsPostImages[data-count="1"] img{height:auto;max-height:340px;object-fit:contain}
 .snsPostImages[data-count="3"]{grid-template-rows:repeat(2,110px)}
 .snsPostImages[data-count="3"] img{height:110px}
+.snsSourceImageGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.snsSourceImageGrid button{padding:0;aspect-ratio:1;overflow:hidden;border-radius:9px}
+.snsSourceImageGrid img{width:100%;height:100%;object-fit:cover}
+.snsSourceImageGrid .snsSourceSelected{outline:3px solid var(--theme);opacity:.55}
 .snsPendingImages{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .snsPendingImages button{position:relative;padding:0;overflow:hidden;width:70px;height:70px}
 .snsPendingImages img{width:100%;height:100%;object-fit:cover}
@@ -12750,7 +12754,24 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
   function snsPendingImageHtml(){return snsPendingImages.length?'<div class="snsPendingImages">'+snsPendingImages.map((x,i)=>'<button type="button" onclick="removeSnsPendingImage('+i+')" title="이미지 제거"><img src="'+x.data+'"></button>').join('')+'</div>':''}
   window.removeSnsPendingImage=function(i){snsPendingImages.splice(i,1);renderSnsProject()};
   window.openSnsImagePicker=function(){pendingDraft=document.getElementById('snsComposerText')?.value||pendingDraft;openModal('<div class="stack"><h2>이미지 첨부</h2><button onclick="openSnsProjectImages()">프로젝트 이미지 자료</button><button onclick="document.getElementById(\'snsPhoneImageInput\').click()">휴대폰 이미지</button><input id="snsPhoneImageInput" type="file" accept="image/*" multiple style="display:none" onchange="addSnsPhoneImages(this.files)"><div class="right"><button onclick="closeModal()">닫기</button></div></div>')};
-  window.openSnsProjectImages=async function(){const list=(db.images||[]).filter(x=>x.project===currentProjectId);openModal('<div class="stack"><h2>프로젝트 이미지</h2><div id="snsImageChoices" class="snsQuoteDocList"></div><div class="right"><button onclick="openSnsImagePicker()">뒤로</button></div></div>');const host=document.getElementById('snsImageChoices');if(!host)return;host.innerHTML=list.length?list.map(x=>'<button type="button" class="snsQuoteDoc" data-sns-pick="'+esc(x.id)+'">'+esc(x.title||'이미지')+'</button>').join(''):'<div class="empty">등록된 이미지가 없습니다.</div>';host.querySelectorAll('[data-sns-pick]').forEach(b=>b.onclick=async()=>{if(snsPendingImages.length>=4)return alert('이미지는 최대 4장입니다.');const data=await getFile(b.dataset.snsPick);if(!data)return alert('이미지 파일을 찾을 수 없습니다.');snsPendingImages.push({data});closeModal();setTimeout(renderSnsProject,210)})};
+  window.openSnsProjectImages=function(){
+    const projects=(db.projects||[]).filter(p=>p.id!==currentProjectId&&(db.images||[]).some(x=>x.project===p.id));
+    openModal('<div class="stack"><h2>다른 프로젝트 이미지</h2><div class="snsQuoteDocList">'+(projects.length?projects.map(p=>'<button type="button" class="snsQuoteDoc" data-sns-source-project="'+esc(p.id)+'">'+esc(p.name||'이름 없는 프로젝트')+'</button>').join(''):'<div class="empty">이미지 자료가 등록된 다른 프로젝트가 없습니다.</div>')+'</div><div class="right"><button onclick="openSnsImagePicker()">뒤로</button></div></div>');
+    document.querySelectorAll('[data-sns-source-project]').forEach(el=>el.onclick=()=>openSnsSourceProject(el.dataset.snsSourceProject));
+  };
+  window.openSnsSourceProject=function(projectId){
+    const project=(db.projects||[]).find(p=>p.id===projectId&&p.id!==currentProjectId);if(!project)return;
+    const items=(db.images||[]).filter(x=>x.project===projectId);
+    openModal('<div class="stack"><h2>'+esc(project.name||'프로젝트')+' · 이미지 자료</h2><div class="snsQuoteDocList">'+items.map(x=>'<button type="button" class="snsQuoteDoc" data-sns-source-item="'+esc(x.id)+'">'+esc(x.title||'제목 없는 이미지')+' <span class="meta">('+imageFileIds(x).length+'장)</span></button>').join('')+'</div><div class="right"><button onclick="openSnsProjectImages()">뒤로</button></div></div>');
+    document.querySelectorAll('[data-sns-source-item]').forEach(el=>el.onclick=()=>openSnsSourceImageItem(projectId,el.dataset.snsSourceItem));
+  };
+  window.openSnsSourceImageItem=async function(projectId,itemId){
+    const item=(db.images||[]).find(x=>x.id===itemId&&x.project===projectId&&projectId!==currentProjectId);if(!item)return;
+    const ids=imageFileIds(item),tiles=[];
+    for(const id of ids){try{const data=await getFile(id);if(data)tiles.push({id,data})}catch(_){}}
+    openModal('<div class="stack"><h2>'+esc(item.title||'이미지 선택')+'</h2><div class="snsSourceImageGrid">'+(tiles.length?tiles.map((x,i)=>'<button type="button" data-sns-source-index="'+i+'" aria-label="이미지 '+(i+1)+' 선택"><img src="'+x.data+'" alt="이미지 '+(i+1)+'"></button>').join(''):'<div class="empty">불러올 이미지가 없습니다.</div>')+'</div><div class="meta">사진을 선택하면 SNS 타래에 한 장씩 추가됩니다. (최대 4장)</div><div class="right"><button onclick="openSnsSourceProject(\''+esc(projectId)+'\')">뒤로</button><button onclick="closeModal();renderSnsProject()">선택 완료</button></div></div>');
+    document.querySelectorAll('[data-sns-source-index]').forEach(el=>el.onclick=()=>{if(snsPendingImages.length>=4)return alert('이미지는 최대 4장입니다.');const chosen=tiles[Number(el.dataset.snsSourceIndex)];if(!chosen)return;snsPendingImages.push({data:chosen.data});el.disabled=true;el.classList.add('snsSourceSelected')});
+  };
   window.addSnsPhoneImages=async function(files){const chosen=[...files].filter(f=>f.type.startsWith('image/'));if(chosen.length+snsPendingImages.length>4)return alert('이미지는 최대 4장입니다.');try{for(const f of chosen)snsPendingImages.push({data:await fileToData(f)});closeModal();setTimeout(renderSnsProject,210)}catch(e){alert('이미지를 불러오지 못했습니다.')}};
   function snsPostHtml(p){return `<article class="snsPost" data-sns-post="${p.id}"><div class="snsPostText">${esc(p.text||'')}</div>${p.quote?quoteHtml(p.quote):''}${p.threadLinkId?threadLinkHtml(p.threadLinkId):''}${snsImageGrid(p)}<div class="snsPostMeta">${fmt(p.updated||p.created)}</div><div class="snsPostActions"><button type="button" class="snsIconBtn snsLikeBtn ${p.liked?'liked':''}" title="좋아요" aria-label="좋아요" onclick="toggleSnsLike('${p.id}')">${p.liked?'♥':'♡'}</button><button type="button" class="snsIconBtn" title="복사" aria-label="복사" onclick="copySnsPost('${p.id}')">📋</button><button type="button" class="snsIconBtn" title="수정" aria-label="수정" onclick="editSnsPost('${p.id}')">✏️</button><button type="button" class="snsIconBtn danger" title="삭제" aria-label="삭제" onclick="deleteSnsPost('${p.id}')">🗑️</button></div></article>`}
   function refreshSnsTimeline(){const thread=ensureSocialThread(currentProjectId),host=snsHost()?.querySelector('.snsTimeline');if(!thread||!host)return;const posts=socialPostsInThread(thread.id,currentProjectId);host.innerHTML=posts.length?posts.map(snsPostHtml).join(''):'<div class="empty">이 타래에는 아직 기록이 없습니다. 아래에서 첫 기록을 남겨보세요.</div>';hydrateSnsImages(host);requestAnimationFrame(updateSnsJumpTopState)}
