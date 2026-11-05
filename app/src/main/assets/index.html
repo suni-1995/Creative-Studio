@@ -13152,6 +13152,13 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
 #timelineCategoryBar .timelineCategoryFilters{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;flex:1;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;-webkit-overflow-scrolling:touch;padding-bottom:2px}
 #timelineCategoryBar .timelineCategoryFilter{flex:0 0 auto;padding:6px 10px;border-radius:999px;font-size:11px;box-shadow:none;white-space:nowrap}
 #timelineCategoryBar .timelineCategoryFilter.active{background:var(--theme);color:var(--themeInk);border-color:var(--theme)}
+#timelineCategoryBar .timelineCategorySelector{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:11px 14px;border-radius:12px}
+#timelineCategoryBar .timelineCategorySelector span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.timelineCategoryPickerOverlay{position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px 16px max(24px,env(safe-area-inset-bottom))}
+.timelineCategoryPickerSheet{width:min(100%,560px);max-height:65vh;overflow-y:auto;overscroll-behavior:contain;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:10px 12px;box-shadow:0 15px 40px rgba(0,0,0,.25)}
+.timelineCategoryPickerOption{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left;padding:17px 14px;border-radius:12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink)}
+.timelineCategoryPickerOption:last-child{border-bottom:0}
+.timelineCategoryPickerOption.active{background:color-mix(in srgb,var(--theme) 17%,var(--card));color:var(--theme)}
 #timelineCategoryBar .timelineCategoryManageBtn{flex:0 0 auto;padding:7px 10px;font-size:12px}
 .timelineCategoryBadgeRow{margin:4px 0 1px;line-height:1}
 .timelineCategoryBadge{display:inline-flex;align-items:center;max-width:100%;padding:3px 7px;border-radius:999px;border:1px solid color-mix(in srgb,var(--theme) 17%,var(--line));background:color-mix(in srgb,var(--theme) 7%,var(--card));color:color-mix(in srgb,var(--theme) 72%,var(--ink));font-size:10px;font-weight:720;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -13265,7 +13272,7 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
     let active=currentCategoryFilter();
     if(active!==UNCATEGORIZED_FILTER&&active&&!cats.some(c=>c.id===active)){active='';setCurrentCategoryFilter('')}
     if(active===UNCATEGORIZED_FILTER&&!hasUncategorized){active='';setCurrentCategoryFilter('')}
-    bar.innerHTML=`<div class="timelineCategoryFilters"><button type="button" class="timelineCategoryFilter ${active?'':'active'}" onclick="fix30SetTimelineCategoryFilter('')">전체</button>${cats.map(c=>`<button type="button" class="timelineCategoryFilter ${active===c.id?'active':''}" onclick="fix30SetTimelineCategoryFilter('${c.id}')">${esc(c.name)}</button>`).join('')}${hasUncategorized?`<button type="button" class="timelineCategoryFilter ${active===UNCATEGORIZED_FILTER?'active':''}" onclick="fix30SetTimelineCategoryFilter('${UNCATEGORIZED_FILTER}')">분류 없음</button>`:''}</div><button type="button" class="timelineCategoryManageBtn" onclick="openTimelineCategoryManager()">분류 관리</button>`;
+    bar.innerHTML=`<button type="button" class="timelineCategorySelector" onclick="fix30OpenTimelineCategoryPicker()"><span>${esc(active===UNCATEGORIZED_FILTER?'분류 없음':(cats.find(c=>c.id===active)?.name||'전체'))}</span><span aria-hidden="true">⌄</span></button><button type="button" class="timelineCategoryManageBtn" onclick="openTimelineCategoryManager()">분류 관리</button>`;
   }
   function buildTimelineCategoryOverview(){
     if(!timelineCategoryEnabled()||currentCategoryFilter())return;
@@ -13403,6 +13410,18 @@ body.studioProjectBackupOnly #backupTrash .backupTrashNav.creativeThreadNav{disp
     if(group.classList.toggle('isCollapsed'))set.add(id);else set.delete(id);
   };
 
+  window.fix30OpenTimelineCategoryPicker=function(){
+    if(!timelineCategoryEnabled())return;
+    const cats=sortedTimelineCategoryGroups(timelineCategories().map(c=>({id:c.id,name:c.name,items:[]})));
+    const hasUncategorized=(db.timeline||[]).some(x=>x.project===currentProjectId&&(!x.categoryId||!timelineCategoryName(x.categoryId)));
+    const active=currentCategoryFilter();
+    const options=[{id:'',name:'전체'},...cats.map(c=>({id:c.id,name:c.name})),...(hasUncategorized?[{id:UNCATEGORIZED_FILTER,name:'분류 없음'}]:[])];
+    const overlay=document.createElement('div');overlay.className='timelineCategoryPickerOverlay';
+    overlay.innerHTML='<div class="timelineCategoryPickerSheet" role="dialog" aria-label="타임라인 분류 선택"><div class="timelineCategoryPickerList">'+options.map((c,i)=>'<button type="button" class="timelineCategoryPickerOption '+(active===c.id?'active':'')+'" data-timeline-picker-index="'+i+'"><span>'+esc(c.name)+'</span>'+(active===c.id?'<span aria-hidden="true">✓</span>':'')+'</button>').join('')+'</div></div>';
+    overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
+    overlay.querySelectorAll('[data-timeline-picker-index]').forEach(b=>b.onclick=()=>{const c=options[Number(b.dataset.timelinePickerIndex)];overlay.remove();if(c)fix30SetTimelineCategoryFilter(c.id)});
+    document.body.appendChild(overlay);
+  };
   window.fix30SetTimelineCategoryFilter=function(id){
     setCurrentCategoryFilter(id||'');
     renderTimeline();
