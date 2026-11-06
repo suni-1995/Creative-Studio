@@ -6,6 +6,7 @@ const typeName=t=>S.TYPES.find(x=>x[0]===t)?.[1]||t;
 const folderName=id=>S.folder(id)?.name||"폴더 없음";
 const date=x=>new Date(x||Date.now()).toLocaleDateString("ko-KR");
 let activeFolder="",openedId="",screen="projects",editor={mode:"",id:""},imageDraft;
+const LAST_OPEN_KEY="creative-studio-pc-last-open-project";
 let toastTimer;
 function notice(t){const m=$("message");m.textContent=t;m.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>m.hidden=true,3500);}
 function attempt(fn){try{fn();}catch(e){notice(e.message||"저장에 실패했습니다.");}}
@@ -62,7 +63,7 @@ function renderDetail(){
  else{host.textContent="✦";host.style.background=/^#[0-9a-f]{6}$/i.test(p.color)?p.color:"#7b61a8";}
 }
 function render(){renderFolders();renderProjects();if(screen==="detail")renderDetail();}
-function openProject(id){if(!S.project(id))return;openedId=id;view("detail");renderDetail();window.CreativeStage3?.openProject(id);}
+function openProject(id){if(!S.project(id))return;openedId=id;try{sessionStorage.setItem(LAST_OPEN_KEY,id);}catch(e){console.warn(e);}view("detail");renderDetail();window.CreativeStage3?.openProject(id);}
 function showDialog(){const d=$("editorDialog");if(d.showModal)d.showModal();else d.setAttribute("open","");}
 function closeDialog(){const d=$("editorDialog");if(d.close)d.close();else d.removeAttribute("open");editor={mode:"",id:""};imageDraft=undefined;}
 function folderSelect(id){
@@ -137,11 +138,12 @@ $("editorDialog").addEventListener("close",()=>{editor={mode:"",id:""};imageDraf
 $("editorDialog").addEventListener("click",e=>{if(e.target===$("editorDialog"))closeDialog();});
 $("newProject").onclick=()=>projectEditor();$("newFolder").onclick=()=>folderEditor();$("allFolders").onclick=()=>{activeFolder="";render();};
 $("projectSearch").oninput=renderProjects;$("projectSort").onchange=renderProjects;
-$("backToProjects").onclick=()=>{view("projects");render();};
+$("backToProjects").onclick=()=>{try{sessionStorage.removeItem(LAST_OPEN_KEY);}catch(e){console.warn(e);}view("projects");render();};
 $("editOpenProject").onclick=()=>projectEditor(openedId);$("moveOpenProject").onclick=()=>moveEditor(openedId);
-document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view(b.dataset.view);if(b.dataset.view==="projects")render();});
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{if(b.dataset.view==="projects"){try{sessionStorage.removeItem(LAST_OPEN_KEY);}catch(e){console.warn(e);}}view(b.dataset.view);if(b.dataset.view==="projects")render();});
 $("importBackup").onclick=()=>notice("백업 가져오기 기능은 6차에서 구현됩니다.");
 $("exportBackup").onclick=()=>notice("백업 내보내기 기능은 6차에서 구현됩니다.");
 view("projects");render();
+try{const saved=sessionStorage.getItem(LAST_OPEN_KEY);if(saved&&S.project(saved))openProject(saved);else if(saved)sessionStorage.removeItem(LAST_OPEN_KEY);}catch(e){console.warn("프로젝트 화면 복원 실패",e);}
 if(S.getLoadError())notice("기존 저장 데이터를 읽지 못했습니다. 기존 데이터는 덮어쓰지 않았습니다.");
 })();
