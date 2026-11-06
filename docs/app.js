@@ -62,7 +62,7 @@ function renderDetail(){
  else{host.textContent="✦";host.style.background=/^#[0-9a-f]{6}$/i.test(p.color)?p.color:"#7b61a8";}
 }
 function render(){renderFolders();renderProjects();if(screen==="detail")renderDetail();}
-function openProject(id){if(!S.project(id))return;openedId=id;view("detail");renderDetail();}
+function openProject(id){if(!S.project(id))return;openedId=id;view("detail");renderDetail();window.CreativeStage3?.openProject(id);}
 function showDialog(){const d=$("editorDialog");if(d.showModal)d.showModal();else d.setAttribute("open","");}
 function closeDialog(){const d=$("editorDialog");if(d.close)d.close();else d.removeAttribute("open");editor={mode:"",id:""};imageDraft=undefined;}
 function folderSelect(id){
