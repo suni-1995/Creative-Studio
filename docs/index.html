@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#faf9f7">
+  <title>창작소 — PC</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>창작소</span></div>
+      <div class="backup-actions">
+        <button class="button secondary" id="importBackup" type="button">백업 가져오기</button>
+        <button class="button secondary" id="exportBackup" type="button">백업 내보내기</button>
+      </div>
+    </header>
+    <div class="workspace">
+      <aside class="sidebar" aria-label="주 메뉴">
+        <nav class="side-nav">
+          <button type="button" class="nav-button active" data-view="projects" aria-current="page"><span aria-hidden="true">▦</span> 프로젝트</button>
+          <button type="button" class="nav-button" data-view="more"><span aria-hidden="true">☷</span> 더보기</button>
+        </nav>
+        <div class="side-note">창작소 PC <span>1차 기본 화면</span></div>
+      </aside>
+      <main class="main-content" id="mainContent" tabindex="-1">
+        <section class="panel" id="projectsView" data-panel="projects">
+          <div class="section-heading">
+            <div><p class="eyebrow">MY WORKSPACE</p><h1>프로젝트</h1><p class="muted">나만의 이야기를 정리하는 공간</p></div>
+          </div>
+          <div class="folder-heading"><h2>폴더</h2><span class="tag">기본 화면</span></div>
+          <div class="empty-box" id="folderList"><div class="empty-icon" aria-hidden="true">▤</div><strong>아직 폴더가 없습니다.</strong><p>폴더 생성과 관리는 2차에서 사용할 수 있습니다.</p></div>
+          <div class="folder-heading project-heading"><h2>프로젝트 목록</h2><span class="tag">0개</span></div>
+          <div class="empty-box" id="projectList"><div class="empty-icon" aria-hidden="true">✎</div><strong>아직 프로젝트가 없습니다.</strong><p>프로젝트 생성과 관리는 2차에서 구현됩니다.</p></div>
+        </section>
+        <section class="panel" id="moreView" data-panel="more" hidden>
+          <div class="section-heading"><div><p class="eyebrow">TOOLS & SETTINGS</p><h1>더보기</h1><p class="muted">창작 도구와 환경 설정</p></div></div>
+          <div class="more-grid">
+            <div class="info-card"><span class="card-icon" aria-hidden="true">✧</span><h2>창작 도구</h2><p>다른 창작 기능은 이후 개발 회차에서 순서대로 연결됩니다.</p></div>
+            <div class="info-card"><span class="card-icon" aria-hidden="true">⚙</span><h2>설정</h2><p>PC 창작소의 설정 화면을 준비 중입니다.</p></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="message" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+</body>
+</html>
