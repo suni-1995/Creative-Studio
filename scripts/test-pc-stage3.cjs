@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');const root='docs/';
+for(const f of ['storage.js','app.js','creative-media-store.js','creative.js'])new vm.Script(fs.readFileSync(root+f,'utf8'),{filename:f});
+const html=fs.readFileSync(root+'index.html','utf8'),app=fs.readFileSync(root+'app.js','utf8'),creative=fs.readFileSync(root+'creative.js','utf8');
+for(const id of ['creativeWorkspace','creativeProjectName','creativeTabs','creativeNew','creativeSearch','creativeTag','creativeSort','creativeCount','creativeList','creativeEditor','creativeEditorForm','creativePreview','creativePreviewBody','creativeMedia','creativeMediaBody','creativeOriginalSave'])assert(html.includes('id="'+id+'"'),id+' missing');
+assert(html.indexOf('storage.js')<html.indexOf('app.js')&&html.indexOf('app.js')<html.indexOf('creative-media-store.js')&&html.indexOf('creative-media-store.js')<html.indexOf('creative.js'),'script order');
+assert(creative.includes('showItemPreview(cardKind,x.id)'),'card preview handler missing');assert(app.includes('sessionStorage.getItem(LAST_OPEN_KEY)'),'refresh restoration missing');
+const map=new Map(),localStorage={getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v)};const load=()=>{const w={};vm.runInNewContext(fs.readFileSync(root+'storage.js','utf8'),{window:w,localStorage,console});return w.CreativeStore};
+let st=load(),p=st.createProject({name:'Stage 3 audit',projectType:'advanced'});const kinds=['characters','settings','relations','images','videos','sources','creativeWorks'];for(const kind of kinds)st.upsertCreative(kind,{id:kind+'-1',project:p.id,title:kind,name:kind,linkedIds:[]});
+st=load();for(const kind of kinds)assert.equal(st.getState()[kind].length,1,kind+' did not persist');
+st.removeCreative('settings','settings-1',p.id);assert.equal(st.getState().settings.length,0);
+st.deleteProject(p.id);for(const kind of kinds)assert.equal(st.getState()[kind].length,0,kind+' not removed with project');
+map.set(st.KEY,'{invalid json');st=load();assert(st.getLoadError(),'corrupt storage not detected');assert.throws(()=>st.createProject({name:'should not overwrite',projectType:'general'}));assert.equal(map.get(st.KEY),'{invalid json');
+console.log('PASS: JS syntax, DOM hooks, refresh restoration, 7 data kinds persistence, delete cascade, corrupted storage protection');

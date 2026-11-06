@@ -62,7 +62,7 @@ function renderDetail(){
  if(p.pcCoverData){const img=document.createElement("img");img.src=p.pcCoverData;img.alt="프로젝트 대표 이미지";host.append(img);}
  else{host.textContent="✦";host.style.background=/^#[0-9a-f]{6}$/i.test(p.color)?p.color:"#7b61a8";}
 }
-function render(){renderFolders();renderProjects();if(screen==="detail")renderDetail();}
+function render(){renderFolders();renderProjects();if(screen==="detail"){renderDetail();window.CreativeStage3?.render();}}
 function openProject(id){if(!S.project(id))return;openedId=id;try{sessionStorage.setItem(LAST_OPEN_KEY,id);}catch(e){console.warn(e);}view("detail");renderDetail();window.CreativeStage3?.openProject(id);}
 function showDialog(){const d=$("editorDialog");if(d.showModal)d.showModal();else d.setAttribute("open","");}
 function closeDialog(){const d=$("editorDialog");if(d.close)d.close();else d.removeAttribute("open");editor={mode:"",id:""};imageDraft=undefined;}
@@ -118,7 +118,7 @@ function moveEditor(id){
 }
 function deleteProject(id){
  const p=S.project(id);if(!p||!confirm("'"+p.name+"' 프로젝트를 삭제할까요? 복구할 수 없습니다."))return;
- attempt(()=>{S.deleteProject(id);if(openedId===id){openedId="";view("projects");}render();notice("프로젝트를 삭제했습니다.");});
+ attempt(()=>{const state=S.getState();const ids=["images","videos","sources"].flatMap(k=>(state[k]||[]).filter(x=>x.project===id).map(x=>x.id));const musicIds=["characters","settings"].flatMap(k=>(state[k]||[]).filter(x=>x.project===id).flatMap(x=>(x.musicTracks||[]).map(m=>m.id).filter(Boolean)));S.deleteProject(id);for(const key of [...ids,...musicIds])window.CreativeMedia?.remove(key).catch(console.error);if(openedId===id){openedId="";try{sessionStorage.removeItem(LAST_OPEN_KEY);}catch(e){console.warn(e);}view("projects");}render();notice("프로젝트를 삭제했습니다.");});
 }
 $("editorForm").addEventListener("submit",e=>{
  e.preventDefault();
@@ -144,6 +144,6 @@ document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{if(b.dataset.
 $("importBackup").onclick=()=>notice("백업 가져오기 기능은 6차에서 구현됩니다.");
 $("exportBackup").onclick=()=>notice("백업 내보내기 기능은 6차에서 구현됩니다.");
 view("projects");render();
-try{const saved=sessionStorage.getItem(LAST_OPEN_KEY);if(saved&&S.project(saved))openProject(saved);else if(saved)sessionStorage.removeItem(LAST_OPEN_KEY);}catch(e){console.warn("프로젝트 화면 복원 실패",e);}
+try{const saved=sessionStorage.getItem(LAST_OPEN_KEY);if(saved&&S.project(saved)){window.addEventListener("DOMContentLoaded",()=>openProject(saved),{once:true});}else if(saved)sessionStorage.removeItem(LAST_OPEN_KEY);}catch(e){console.warn("프로젝트 화면 복원 실패",e);}
 if(S.getLoadError())notice("기존 저장 데이터를 읽지 못했습니다. 기존 데이터는 덮어쓰지 않았습니다.");
 })();

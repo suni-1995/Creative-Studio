@@ -16,6 +16,7 @@ try{
  }else localStorage.setItem(KEY,JSON.stringify(db));
 }catch(err){loadError=err;console.error(err);}
 function mutate(fn){
+ if(loadError)throw Error("기존 저장 데이터 읽기에 실패했습니다. 데이터 보호를 위해 저장을 중단했습니다.");
  const next={...db,projects:db.projects.map(p=>({...p})),projectFolders:db.projectFolders.map(f=>({...f})),...Object.fromEntries(CREATIVE_KINDS.map(k=>[k,db[k].slice()]))};
  fn(next);
  try{localStorage.setItem(KEY,JSON.stringify(next));}
