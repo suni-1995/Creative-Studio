@@ -21,7 +21,7 @@ const checked=(f,k)=>!!f.querySelector('[name="'+k+'"]:checked');
 const selected=(f,k)=>[...f.querySelectorAll('[name="'+k+'"]:checked')].map(x=>x.value);
 const tell=text=>{let m=$("message");m.textContent=text;m.hidden=false;clearTimeout(window._creativeToast);window._creativeToast=setTimeout(()=>m.hidden=true,3500)};
 const guard=fn=>{try{const r=fn();if(r&&r.catch)r.catch(e=>tell(e.message||"처리 실패"));}catch(e){console.error(e);tell(e.message||"처리 실패");}};
-function openProject(id){projectId=id;tab="characters";search="";tag="";const d=$("creativeWorkspace");if(!d||!S.project(id))return;d.hidden=false;render();}
+function openProject(id){projectId=id;tab="characters";search="";tag="";const d=$("creativeWorkspace");if(!d||!S.project(id))return;d.hidden=!["advanced","general","short","fanwork"].includes(S.project(id).projectType);if(!d.hidden)render();}
 function render(){let p=S.project(projectId);if(!p)return;$("creativeProjectName").textContent=p.name;$("creativeOriginal").hidden=p.projectType!=="fanwork";if(p.projectType==="fanwork"){for(let k of ["originalTitle","originalKind","originalNote"])$(k).value=p[k]||"";}
  let nav=$("creativeTabs");nav.replaceChildren();if(!isAllowed(tab))tab="characters";
  for(let [k,name] of Object.entries(LABELS)){if(!isAllowed(k))continue;let b=document.createElement("button");b.type="button";b.className="creative-tab"+(tab===k?" active":"");b.textContent=name;b.onclick=()=>{tab=k;search="";tag="";render();};nav.append(b);}
