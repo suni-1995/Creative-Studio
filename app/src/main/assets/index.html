@@ -4475,7 +4475,7 @@ body.bulkSelecting .quickMemoCard.bulkSelected .quickMemoFoot{margin-left:40px!i
   function updateControls(){
     document.querySelectorAll('.fix27ProjectViewToggle button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===mode));
     const list=document.getElementById('projectList');
-    if(list){list.classList.toggle('fix27ProjectViewCards',mode==='list');list.classList.toggle('fix27ProjectViewList',mode==='cards')}
+    if(list){list.classList.toggle('fix27ProjectViewCards',mode==='cards');list.classList.toggle('fix27ProjectViewList',mode==='list')}
   }
   window.setProjectViewMode=function(next){
     mode=next==='cards'?'cards':'list';
