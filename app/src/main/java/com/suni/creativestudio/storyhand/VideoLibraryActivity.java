@@ -113,7 +113,22 @@ public class VideoLibraryActivity extends Activity {
         scroll.addView(list);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
+        cleanupPartialFiles();
         render();
+    }
+
+    private File videoDirectory() { return new File(getFilesDir(), "video_library"); }
+    private File safeVideoFile(String id, String filename) {
+        if (id == null || filename == null || !filename.equals(id + ".video")) return null;
+        try { UUID.fromString(id); } catch (IllegalArgumentException e) { return null; }
+        return new File(videoDirectory(), filename);
+    }
+    private void cleanupPartialFiles() {
+        File[] files = videoDirectory().listFiles();
+        if (files == null) return;
+        for (File file : files) {
+            if (file.isFile() && file.getName().endsWith(".partial")) file.delete();
+        }
     }
 
     private void chooseVideo() {
@@ -157,12 +172,16 @@ public class VideoLibraryActivity extends Activity {
         importingName = name;
         render();
         final long total = fileSize(uri);
+        if (total > 0 && getFilesDir().getUsableSpace() < total + 1024L * 1024L) {
+            copying = false; importingName = ""; importingPercent = -1;
+            addButton.setEnabled(true); render(); toast("영상 저장 공간이 부족합니다."); return;
+        }
         progressLabel.setVisibility(View.VISIBLE);
         progressBar.setProgress(0);
         progressBar.setVisibility(View.VISIBLE);
         progressLabel.setText("등록 중: " + name + " (0%)");
         new Thread(() -> {
-            File directory = new File(getFilesDir(), "video_library");
+            File directory = videoDirectory();
             File temp = null;
             try {
                 if (!directory.exists() && !directory.mkdirs()) throw new IOException("저장 폴더 생성 실패");
@@ -188,13 +207,22 @@ public class VideoLibraryActivity extends Activity {
                     output.flush();
                 }
                 if (cancelled) throw new IOException("등록 취소");
+                if (copied <= 0) throw new IOException("빈 영상 파일입니다.");
+                if (total >= 0 && copied != total) throw new IOException("복사된 파일 크기가 원본과 다릅니다.");
                 File completed = new File(directory, id + ".video");
                 if (!temp.renameTo(completed)) throw new IOException("파일 확정 실패");
                 JSONObject record = new JSONObject();
                 record.put("id", id);
                 record.put("title", name);
                 record.put("file", completed.getName());
-                synchronized (lock) { videos.put(record); save(); }
+                synchronized (lock) {
+                    JSONArray updated = new JSONArray(videos.toString());
+                    updated.put(record);
+                    if (!getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY, updated.toString()).commit()) {
+                        completed.delete(); throw new IOException("영상 목록 저장 실패");
+                    }
+                    videos = updated;
+                }
                 runOnUiThread(() -> { importingPercent = 100; progressBar.setProgress(100); progressLabel.setText("등록 완료 (100%)"); render(); });
             } catch (Exception e) {
                 if (temp != null) temp.delete();
@@ -210,7 +238,7 @@ public class VideoLibraryActivity extends Activity {
 
     private long tempLength() { File f = currentTemp; return f == null ? 0 : f.length(); }
     private String readable(long bytes) { return (bytes / (1024 * 1024)) + " MB"; }
-    private void save() { getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY, videos.toString()).apply(); }
+    private boolean save() { return getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY, videos.toString()).commit(); }
     private void toast(String text) { Toast.makeText(this, text, Toast.LENGTH_SHORT).show(); }
 
     private void render() {
@@ -297,7 +325,7 @@ public class VideoLibraryActivity extends Activity {
             .setNegativeButton("취소", null).setPositiveButton("저장", (d, w) -> {
                 String value = edit.getText().toString().trim();
                 if (value.isEmpty()) { toast("제목을 입력해 주세요."); return; }
-                try { videos.optJSONObject(indexOf(id)).put("title", value); save(); render(); }
+                try { videos.optJSONObject(indexOf(id)).put("title", value); if (!save()) throw new IOException("목록 저장 실패"); render(); }
                 catch (Exception e) { toast("제목을 저장하지 못했습니다."); }
             }).show();
     }
@@ -312,10 +340,12 @@ public class VideoLibraryActivity extends Activity {
         int i = indexOf(id);
         if (i < 0) return;
         JSONObject item = videos.optJSONObject(i);
-        File file = new File(new File(getFilesDir(), "video_library"), item.optString("file"));
+        File file = safeVideoFile(id, item.optString("file"));
+        if (file == null) { toast("영상 파일 경로가 올바르지 않습니다."); return; }
         if (file.exists() && !file.delete()) { toast("영상 파일 삭제에 실패했습니다."); return; }
         videos.remove(i);
-        save();
+        if (!save()) { toast("영상 목록 저장에 실패했습니다."); return; }
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().remove("position_" + id).commit();
         render();
     }
 
