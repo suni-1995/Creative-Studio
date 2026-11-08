@@ -253,6 +253,12 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                // Load the optional menu only after the main document has finished.
+                // Never block or rewrite the original startup HTML.
+                if (url != null && url.startsWith("https://creative.local/")) {
+                    view.evaluateJavascript("(function(){if(document.getElementById('video-library-menu-script'))return;var s=document.createElement('script');s.id='video-library-menu-script';s.async=true;s.src='https://creative.local/extras/video-library-menu.js';document.head.appendChild(s);})();", null);
+                }
+
                 long elapsed = SystemClock.elapsedRealtime() - splashStartedAt;
                 long delay = Math.max(0L, 1400L - elapsed);
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
