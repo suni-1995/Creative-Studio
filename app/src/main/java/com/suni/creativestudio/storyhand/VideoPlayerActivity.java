@@ -27,9 +27,8 @@ public class VideoPlayerActivity extends Activity {
     private TextView title, clock;
     private LinearLayout root, controls;
     private Button toggle, full;
-    private boolean prepared, switching, fullscreen, seeking, ended, rotationPending;
-    private boolean wasPlayingBeforeRotation;
-    private int rotationPosition;
+    private boolean prepared, switching, fullscreen, seeking, ended;
+    private boolean orientationTransition, restartAfterOrientation;
     private long lastSaved;
     private String currentId = "";
     private final Runnable ticker = new Runnable() {
@@ -101,7 +100,7 @@ public class VideoPlayerActivity extends Activity {
         controls.addView(row);
         button("이전",row,v->move(-1));
         button("-10초",row,v->jump(-10000));
-        toggle=button("일시정지",row,v->{ if (!prepared) return; if (video.isPlaying()) { video.pause(); checkpoint(); } else video.start(); toggle.setText(video.isPlaying()?"일시정지":"재생"); });
+        toggle=button("일시정지",row,v->{ if (!prepared) return; if (video.isPlaying()) { video.pause(); checkpoint(); } else { if (ended) { video.seekTo(0); ended=false; } video.start(); } toggle.setText(video.isPlaying()?"일시정지":"재생"); });
         button("+10초",row,v->jump(10000));
         button("다음",row,v->move(1));
         LinearLayout extra = new LinearLayout(this); controls.addView(extra);
@@ -119,14 +118,14 @@ public class VideoPlayerActivity extends Activity {
             prepared=true; switching=false; ended=false;
             int duration=video.getDuration();
             int saved=prefs().getInt(positionKey(currentId),0);
-            if (rotationPending) { video.seekTo(rotationPosition); rotationPending=false; if (wasPlayingBeforeRotation) video.start(); }
-            else { if (saved>0 && duration>0 && saved<duration-1000) video.seekTo(saved); video.start(); }
+            if (saved>0 && duration>0 && saved<duration-1000) video.seekTo(saved);
+            video.start();
             toggle.setText(video.isPlaying() ? "일시정지" : "재생");
         });
         video.setOnCompletionListener(mp->{
             prepared=false; ended=true; switching=false;
             prefs().edit().remove(positionKey(currentId)).apply();
-            if (index+1<videos.length()) open(index+1); else { toggle.setText("재생"); Toast.makeText(this,"마지막 영상 재생이 끝났습니다.",Toast.LENGTH_SHORT).show(); }
+            if (index+1<videos.length()) open(index+1); else { prepared=true; toggle.setText("재생"); Toast.makeText(this,"마지막 영상 재생이 끝났습니다.",Toast.LENGTH_SHORT).show(); }
         });
         video.setOnErrorListener((mp,what,extra)->{
             prepared=false; switching=false;
@@ -162,6 +161,8 @@ public class VideoPlayerActivity extends Activity {
         checkpoint();
     }
     private void setFullscreen(boolean value) {
+        orientationTransition=true;
+        restartAfterOrientation=prepared && video.isPlaying();
         fullscreen=value;
         if (value) {
             getWindow().getDecorView().setSystemUiVisibility(5894 | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
@@ -179,11 +180,12 @@ public class VideoPlayerActivity extends Activity {
     }
     @Override public void onConfigurationChanged(android.content.res.Configuration config) {
         super.onConfigurationChanged(config);
-        // Keep the same VideoView instance across rotation; avoid losing playback position.
+        // The activity instance and VideoView are retained across rotation.
+        if (orientationTransition) { orientationTransition=false; if (restartAfterOrientation && prepared) video.start(); restartAfterOrientation=false; }
     }
     @Override protected void onPause() {
         super.onPause();
-        if (video!=null && prepared) { checkpoint(); video.pause(); }
+        if (video!=null && prepared) { checkpoint(); if (!orientationTransition) video.pause(); }
     }
     @Override protected void onResume() {
         super.onResume();
