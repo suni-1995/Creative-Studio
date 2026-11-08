@@ -1175,6 +1175,11 @@ public class MainActivity extends Activity {
 
     private class NativeBridge {
         @JavascriptInterface
+        public void openVideoLibrary() {
+            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, VideoLibraryActivity.class)));
+        }
+
+        @JavascriptInterface
         public boolean hasMusicPermission() {
             return hasAudioPermission();
         }
