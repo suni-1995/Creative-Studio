@@ -2,12 +2,13 @@ package com.suni.creativestudio.storyhand;
 
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
-import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -17,185 +18,210 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.Locale;
 
-/** Independent, foreground-only local video player. */
+/** Standalone foreground video playback. No project or music dependencies. */
 public class VideoPlayerActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private JSONArray videos = new JSONArray();
-    private int index = -1;
-    private VideoView video;
-    private SeekBar seek;
-    private TextView title, clock;
-    private LinearLayout root, controls;
-    private Button toggle, full;
-    private boolean prepared, switching, fullscreen, seeking, ended;
-    private boolean orientationTransition, restartAfterOrientation;
-    private long lastSaved;
-    private String currentId = "";
-    private final Runnable ticker = new Runnable() {
+    private final Runnable hideControls = () -> setControlsVisible(false);
+    private final Runnable progressTick = new Runnable() {
         @Override public void run() {
-            if (prepared && video != null) {
+            if (prepared) {
                 try {
-                    int position = video.getCurrentPosition();
-                    int duration = video.getDuration();
-                    if (!seeking) seek.setProgress(Math.max(0, position));
-                    seek.setMax(Math.max(1, duration));
-                    clock.setText(time(position) + " / " + time(duration));
-                    toggle.setText(video.isPlaying() ? "일시정지" : "재생");
-                    if (video.isPlaying() && android.os.SystemClock.elapsedRealtime() - lastSaved > 5000) savePosition(position);
+                    int at = video.getCurrentPosition(), duration = Math.max(0, video.getDuration());
+                    if (!dragging) { seek.setMax(Math.max(1, duration)); seek.setProgress(Math.max(0, at)); }
+                    time.setText(format(at) + " / " + format(duration));
+                    play.setText(video.isPlaying() ? "Ⅱ" : "▶");
+                    if (video.isPlaying() && SystemClock.elapsedRealtime() - lastSaved >= 5000) savePosition(at);
                 } catch (Exception ignored) { }
             }
             handler.postDelayed(this, 500);
         }
     };
-    private int dp(int n) { return (int)(n * getResources().getDisplayMetrics().density + .5f); }
-    private GradientDrawable bg(int color) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(12)); return d; }
-    private Button button(String label, LinearLayout parent, View.OnClickListener action) {
-        Button b = new Button(this); b.setText(label); b.setAllCaps(false); b.setTextSize(12);
-        b.setTextColor(Color.WHITE); b.setBackground(bg(Color.rgb(88,81,110)));
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(46), 1); p.setMargins(dp(2),0,dp(2),0);
-        parent.addView(b,p); b.setOnClickListener(action); return b;
+    private JSONArray entries = new JSONArray();
+    private int index = -1;
+    private String id = "";
+    private VideoView video;
+    private FrameLayout frame;
+    private LinearLayout overlay, bottom, center;
+    private TextView heading, time;
+    private SeekBar seek;
+    private TextView play, fullscreenButton;
+    private boolean prepared, loading, ended, dragging, fullscreen, controlsVisible = true;
+    private boolean orientationChange, playingBeforeOrientation;
+    private long lastSaved;
+    private int foreground, background;
+    private int dp(int value) { return (int)(value * getResources().getDisplayMetrics().density + .5f); }
+    private android.content.SharedPreferences prefs() { return getSharedPreferences("video_library_only", MODE_PRIVATE); }
+    private String key() { return "position_" + id; }
+    private String format(int milliseconds) {
+        int seconds = Math.max(0, milliseconds) / 1000;
+        return seconds >= 3600 ? String.format(Locale.getDefault(), "%d:%02d:%02d", seconds/3600, seconds/60%60, seconds%60)
+            : String.format(Locale.getDefault(), "%02d:%02d", seconds/60, seconds%60);
     }
-    private String time(int ms) {
-        int s = Math.max(0,ms)/1000;
-        return s>=3600 ? String.format(Locale.getDefault(),"%d:%02d:%02d",s/3600,(s/60)%60,s%60)
-                       : String.format(Locale.getDefault(),"%02d:%02d",s/60,s%60);
+    private GradientDrawable pill(int color) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(color); d.setCornerRadius(dp(12)); return d;
     }
-    private android.content.SharedPreferences prefs() { return getSharedPreferences("video_library_only",MODE_PRIVATE); }
-    private String positionKey(String id) { return "position_" + id; }
-    private void savePosition(int position) {
-        if (currentId.isEmpty() || ended) return;
-        prefs().edit().putInt(positionKey(currentId), Math.max(0,position)).apply();
-        lastSaved = android.os.SystemClock.elapsedRealtime();
+    private TextView label(String text, int size) {
+        TextView t = new TextView(this); t.setText(text); t.setTextColor(Color.WHITE);
+        t.setTextSize(size); t.setGravity(Gravity.CENTER); return t;
     }
-    private void checkpoint() {
-        if (prepared && !ended && video != null) {
-            try { savePosition(video.getCurrentPosition()); } catch (Exception ignored) { }
-        }
+    private TextView control(String text, LinearLayout parent, int weight, View.OnClickListener action) {
+        TextView t = label(text, 18);
+        t.setBackground(pill(0x99000000));
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(48), weight);
+        p.setMargins(dp(3),0,dp(3),0); parent.addView(t,p);
+        t.setOnClickListener(v -> { action.onClick(v); showControls(); });
+        return t;
     }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        try { videos = new JSONArray(prefs().getString("videos","[]")); } catch (Exception ignored) { }
-        String requested = getIntent().getStringExtra("video_id");
-        for (int i=0;i<videos.length();i++) {
-            JSONObject item=videos.optJSONObject(i);
-            if (item!=null && item.optString("id").equals(requested)) { index=i; break; }
+        try { entries = new JSONArray(prefs().getString("videos","[]")); } catch (Exception ignored) { }
+        String selected = getIntent().getStringExtra("video_id");
+        for (int i=0;i<entries.length();i++) {
+            JSONObject e=entries.optJSONObject(i);
+            if (e!=null && e.optString("id").equals(selected)) { index=i; break; }
         }
         if (index<0) { Toast.makeText(this,"영상을 찾을 수 없습니다.",Toast.LENGTH_LONG).show(); finish(); return; }
-        boolean dark = getSharedPreferences("creative_studio_prefs",MODE_PRIVATE).getBoolean("dark_mode",false);
-        int surface = dark ? Color.rgb(23,23,27) : Color.rgb(245,244,242);
-        int ink = dark ? Color.WHITE : Color.rgb(36,35,40);
-        root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(10),dp(12),dp(10),dp(12)); root.setBackgroundColor(surface);
-        title = new TextView(this); title.setTextColor(ink); title.setTextSize(19);
-        title.setGravity(Gravity.CENTER_VERTICAL); title.setMaxLines(2);
-        root.addView(title,new LinearLayout.LayoutParams(-1,dp(60)));
-        video = new VideoView(this); video.setBackgroundColor(Color.BLACK);
-        root.addView(video,new LinearLayout.LayoutParams(-1,0,1));
-        controls = new LinearLayout(this); controls.setOrientation(LinearLayout.VERTICAL);
-        seek = new SeekBar(this); controls.addView(seek,new LinearLayout.LayoutParams(-1,dp(40)));
-        clock = new TextView(this); clock.setTextColor(ink); clock.setGravity(Gravity.CENTER);
-        controls.addView(clock,new LinearLayout.LayoutParams(-1,dp(28)));
-        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER);
-        controls.addView(row);
-        button("이전",row,v->move(-1));
-        button("-10초",row,v->jump(-10000));
-        toggle=button("일시정지",row,v->{ if (!prepared) return; if (video.isPlaying()) { video.pause(); checkpoint(); } else { if (ended) { video.seekTo(0); ended=false; } video.start(); } toggle.setText(video.isPlaying()?"일시정지":"재생"); });
-        button("+10초",row,v->jump(10000));
-        button("다음",row,v->move(1));
-        LinearLayout extra = new LinearLayout(this); controls.addView(extra);
-        button("처음부터",extra,v->{ if (!prepared) return; prefs().edit().remove(positionKey(currentId)).apply(); video.seekTo(0); ended=false; video.start(); });
-        full=button("전체화면",extra,v->setFullscreen(!fullscreen));
-        root.addView(controls);
-        setContentView(root);
-        video.setOnClickListener(v->controls.setVisibility(controls.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
+        boolean dark=getSharedPreferences("creative_studio_prefs",MODE_PRIVATE).getBoolean("dark_mode",false);
+        background=dark?0xFF17171B:0xFFF5F4F2;
+        foreground=dark?Color.WHITE:0xFF242328;
+        frame=new FrameLayout(this); frame.setBackgroundColor(Color.BLACK);
+        video=new VideoView(this);
+        // Never set a background on VideoView: an opaque SurfaceView background can cover decoded frames.
+        frame.addView(video,new FrameLayout.LayoutParams(-1,-1,Gravity.CENTER));
+        overlay=new LinearLayout(this); overlay.setOrientation(LinearLayout.VERTICAL);
+        overlay.setBackgroundColor(0x33000000);
+        frame.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
+        heading=label("",16); heading.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
+        heading.setPadding(dp(18),dp(8),dp(18),0); heading.setMaxLines(2);
+        overlay.addView(heading,new LinearLayout.LayoutParams(-1,dp(62)));
+        Space topSpace=new Space(this); overlay.addView(topSpace,new LinearLayout.LayoutParams(1,0,1));
+        center=new LinearLayout(this); center.setGravity(Gravity.CENTER);
+        overlay.addView(center,new LinearLayout.LayoutParams(-1,dp(58)));
+        control("Ⅰ◀",center,1,v->move(-1));
+        control("↶ 10",center,1,v->jump(-10000));
+        play=control("▶",center,1,v->toggle());
+        control("10 ↷",center,1,v->jump(10000));
+        control("▶Ⅰ",center,1,v->move(1));
+        Space bottomSpace=new Space(this); overlay.addView(bottomSpace,new LinearLayout.LayoutParams(1,0,1));
+        bottom=new LinearLayout(this); bottom.setOrientation(LinearLayout.VERTICAL);
+        bottom.setPadding(dp(12),dp(6),dp(12),dp(12));
+        bottom.setBackgroundColor(0x77000000);
+        overlay.addView(bottom,new LinearLayout.LayoutParams(-1,-2));
+        seek=new SeekBar(this); bottom.addView(seek,new LinearLayout.LayoutParams(-1,dp(38)));
+        LinearLayout actions=new LinearLayout(this); actions.setGravity(Gravity.CENTER_VERTICAL);
+        bottom.addView(actions,new LinearLayout.LayoutParams(-1,dp(46)));
+        time=label("00:00 / 00:00",13);
+        actions.addView(time,new LinearLayout.LayoutParams(0,-1,1));
+        TextView restart=label("처음부터",14); restart.setPadding(dp(10),0,dp(10),0);
+        actions.addView(restart,new LinearLayout.LayoutParams(-2,-1));
+        restart.setOnClickListener(v->{ if(prepared){ prefs().edit().remove(key()).apply(); ended=false; video.seekTo(0); video.start(); } showControls(); });
+        fullscreenButton=label("⛶",26); fullscreenButton.setPadding(dp(12),0,dp(12),0);
+        actions.addView(fullscreenButton,new LinearLayout.LayoutParams(-2,-1));
+        fullscreenButton.setOnClickListener(v->{ setFullscreen(!fullscreen); showControls(); });
+        setContentView(frame);
+        // Taps on the empty overlay area reveal or dismiss the controls.
+        overlay.setOnClickListener(v->{ if(controlsVisible) setControlsVisible(false); else showControls(); });
+        frame.setOnClickListener(v->showControls());
         seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            public void onStartTrackingTouch(SeekBar bar) { seeking=true; }
-            public void onProgressChanged(SeekBar bar,int progress,boolean user) { if (user) clock.setText(time(progress)+" / "+time(video.getDuration())); }
-            public void onStopTrackingTouch(SeekBar bar) { if (prepared) { video.seekTo(bar.getProgress()); checkpoint(); } seeking=false; }
+            public void onStartTrackingTouch(SeekBar s) { dragging=true; handler.removeCallbacks(hideControls); }
+            public void onProgressChanged(SeekBar s,int value,boolean user) { if(user) time.setText(format(value)+" / "+format(video.getDuration())); }
+            public void onStopTrackingTouch(SeekBar s) { if(prepared){ video.seekTo(s.getProgress()); savePosition(s.getProgress()); } dragging=false; showControls(); }
         });
         video.setOnPreparedListener(mp->{
-            prepared=true; switching=false; ended=false;
-            int duration=video.getDuration();
-            int saved=prefs().getInt(positionKey(currentId),0);
-            if (saved>0 && duration>0 && saved<duration-1000) video.seekTo(saved);
-            video.start();
-            toggle.setText(video.isPlaying() ? "일시정지" : "재생");
+            prepared=true; loading=false; ended=false;
+            int saved=prefs().getInt(key(),0), duration=video.getDuration();
+            if(saved>0 && duration>0 && saved<duration-1000) video.seekTo(saved);
+            video.start(); showControls();
         });
         video.setOnCompletionListener(mp->{
-            prepared=false; ended=true; switching=false;
-            prefs().edit().remove(positionKey(currentId)).apply();
-            if (index+1<videos.length()) open(index+1); else { prepared=true; toggle.setText("재생"); Toast.makeText(this,"마지막 영상 재생이 끝났습니다.",Toast.LENGTH_SHORT).show(); }
+            prepared=false; loading=false; ended=true;
+            prefs().edit().remove(key()).apply();
+            if(index+1<entries.length()) open(index+1);
+            else { prepared=true; play.setText("▶"); showControls(); Toast.makeText(this,"마지막 영상 재생이 끝났습니다.",Toast.LENGTH_SHORT).show(); }
         });
         video.setOnErrorListener((mp,what,errorCode)->{
-            prepared=false; switching=false;
-            Toast.makeText(this,"영상을 재생할 수 없습니다. 파일 또는 형식을 확인해 주세요.",Toast.LENGTH_LONG).show();
-            return true;
+            prepared=false; loading=false;
+            Toast.makeText(this,"영상 화면을 재생할 수 없습니다. 파일 형식 또는 코덱을 확인해 주세요.",Toast.LENGTH_LONG).show();
+            showControls(); return true;
         });
-        handler.post(ticker);
+        handler.post(progressTick);
         open(index);
     }
-    private void open(int target) {
-        if (target<0 || target>=videos.length() || switching) return;
-        checkpoint();
-        prepared=false; ended=false; switching=true; index=target;
-        JSONObject item=videos.optJSONObject(index);
-        if (item==null) { switching=false; return; }
-        currentId=item.optString("id");
-        title.setText(item.optString("title","동영상"));
-        File file=new File(new File(getFilesDir(),"video_library"),item.optString("file"));
-        if (!file.isFile()) {
-            switching=false; Toast.makeText(this,"저장된 영상 파일이 없습니다.",Toast.LENGTH_LONG).show(); return;
-        }
-        try { video.stopPlayback(); video.setVideoPath(file.getAbsolutePath()); video.requestFocus(); }
-        catch (Exception e) { switching=false; Toast.makeText(this,"영상 열기에 실패했습니다.",Toast.LENGTH_LONG).show(); }
+    private void savePosition(int position) {
+        if(id.isEmpty() || ended) return;
+        prefs().edit().putInt(key(),Math.max(0,position)).apply();
+        lastSaved=SystemClock.elapsedRealtime();
     }
-    private void move(int delta) {
-        int target=index+delta;
-        if (target>=0 && target<videos.length()) open(target);
-        else Toast.makeText(this,delta>0?"마지막 영상입니다.":"첫 번째 영상입니다.",Toast.LENGTH_SHORT).show();
+    private void checkpoint() {
+        if(prepared && !ended) try { savePosition(video.getCurrentPosition()); } catch(Exception ignored) { }
+    }
+    private void open(int target) {
+        if(target<0 || target>=entries.length() || loading) return;
+        checkpoint(); prepared=false; loading=true; ended=false; index=target;
+        JSONObject item=entries.optJSONObject(target);
+        if(item==null){ loading=false; return; }
+        id=item.optString("id");
+        heading.setText(item.optString("title","동영상"));
+        File file=new File(new File(getFilesDir(),"video_library"),item.optString("file"));
+        if(!file.isFile()){ loading=false; Toast.makeText(this,"저장된 영상 파일이 없습니다.",Toast.LENGTH_LONG).show(); return; }
+        try { video.stopPlayback(); video.setVideoPath(file.getAbsolutePath()); video.requestFocus(); }
+        catch(Exception e){ loading=false; Toast.makeText(this,"영상 열기에 실패했습니다.",Toast.LENGTH_LONG).show(); }
+        showControls();
+    }
+    private void toggle() {
+        if(!prepared) return;
+        if(video.isPlaying()){ checkpoint(); video.pause(); }
+        else { if(ended){ video.seekTo(0); ended=false; } video.start(); }
+        play.setText(video.isPlaying()?"Ⅱ":"▶");
     }
     private void jump(int delta) {
-        if (!prepared) return;
-        video.seekTo(Math.max(0,Math.min(video.getDuration(),video.getCurrentPosition()+delta)));
-        checkpoint();
+        if(!prepared) return;
+        int pos=Math.max(0,Math.min(video.getDuration(),video.getCurrentPosition()+delta));
+        video.seekTo(pos); savePosition(pos);
     }
-    private void setFullscreen(boolean value) {
-        orientationTransition=true;
-        restartAfterOrientation=prepared && video.isPlaying();
-        fullscreen=value;
-        if (value) {
-            getWindow().getDecorView().setSystemUiVisibility(5894 | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-            title.setVisibility(View.GONE);
+    private void move(int delta) {
+        int next=index+delta;
+        if(next>=0 && next<entries.length()) open(next);
+        else Toast.makeText(this,delta>0?"마지막 영상입니다.":"첫 번째 영상입니다.",Toast.LENGTH_SHORT).show();
+    }
+    private void setControlsVisible(boolean visible) {
+        controlsVisible=visible;
+        overlay.setVisibility(visible?View.VISIBLE:View.GONE);
+        handler.removeCallbacks(hideControls);
+        if(visible && !dragging) handler.postDelayed(hideControls,5000);
+    }
+    private void showControls() { setControlsVisible(true); }
+    private void setFullscreen(boolean enable) {
+        fullscreen=enable;
+        orientationChange=true;
+        playingBeforeOrientation=prepared && video.isPlaying();
+        if(enable) {
+            getWindow().getDecorView().setSystemUiVisibility(5894|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         } else {
             getWindow().getDecorView().setSystemUiVisibility(0);
-            title.setVisibility(View.VISIBLE);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         }
-        full.setText(value?"전체화면 종료":"전체화면");
+        fullscreenButton.setText(enable?"⛶":"⛶");
+    }
+    @Override public void onConfigurationChanged(Configuration config) {
+        super.onConfigurationChanged(config);
+        orientationChange=false;
+        if(playingBeforeOrientation && prepared) video.start();
+        playingBeforeOrientation=false;
     }
     @Override public void onBackPressed() {
-        if (fullscreen) setFullscreen(false); else super.onBackPressed();
-    }
-    @Override public void onConfigurationChanged(android.content.res.Configuration config) {
-        super.onConfigurationChanged(config);
-        // The activity instance and VideoView are retained across rotation.
-        if (orientationTransition) { orientationTransition=false; if (restartAfterOrientation && prepared) video.start(); restartAfterOrientation=false; }
+        if(fullscreen) { setFullscreen(false); showControls(); } else super.onBackPressed();
     }
     @Override protected void onPause() {
         super.onPause();
-        if (video!=null && prepared) { checkpoint(); if (!orientationTransition) video.pause(); }
-    }
-    @Override protected void onResume() {
-        super.onResume();
-        // Background playback is intentionally disabled; resume only by user action.
-
+        if(prepared){ checkpoint(); if(!orientationChange) video.pause(); }
     }
     @Override protected void onDestroy() {
-        checkpoint(); handler.removeCallbacks(ticker);
-        if (video!=null) video.stopPlayback();
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        checkpoint(); handler.removeCallbacks(progressTick); handler.removeCallbacks(hideControls);
+        video.stopPlayback(); getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         super.onDestroy();
     }
 }
