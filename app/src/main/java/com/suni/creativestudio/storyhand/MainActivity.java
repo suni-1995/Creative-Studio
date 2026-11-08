@@ -256,7 +256,16 @@ public class MainActivity extends Activity {
                 // Load the optional menu only after the main document has finished.
                 // Never block or rewrite the original startup HTML.
                 if (url != null && url.startsWith("https://creative.local/")) {
-                    view.evaluateJavascript("(function(){if(document.getElementById('video-library-menu-script'))return;var s=document.createElement('script');s.id='video-library-menu-script';s.async=true;s.src='https://creative.local/extras/video-library-menu.js';document.head.appendChild(s);})();", null);
+                    try (InputStream videoMenu = getAssets().open("extras/video-library-menu.js");
+                         ByteArrayOutputStream videoMenuBytes = new ByteArrayOutputStream()) {
+                        byte[] chunk = new byte[4096];
+                        int count;
+                        while ((count = videoMenu.read(chunk)) != -1) videoMenuBytes.write(chunk, 0, count);
+                        String menuSource = videoMenuBytes.toString("UTF-8");
+                        view.evaluateJavascript(menuSource, null);
+                    } catch (Exception e) {
+                        android.util.Log.e("CreativeVideoLibrary", "Unable to initialize video menu", e);
+                    }
                 }
 
                 long elapsed = SystemClock.elapsedRealtime() - splashStartedAt;
