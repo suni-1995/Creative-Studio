@@ -4,7 +4,7 @@
 "use strict";
 const KEY="creative-studio-pc-v1";
 const TYPES=[["advanced","고급 프로젝트"],["general","일반 프로젝트"],["short","단편 프로젝트"],["fanwork","2차창작 프로젝트"],["memo","메모 프로젝트"],["sns","SNS 프로젝트"],["ledger","가계부 프로젝트"],["diary","일기장 프로젝트"]];
-const CREATIVE_KINDS=["characters","settings","relations","images","videos","sources","creativeWorks"];const empty=()=>({schemaVersion:3,projects:[],projectFolders:[],...Object.fromEntries(CREATIVE_KINDS.map(k=>[k,[]]))});
+const CREATIVE_KINDS=["characters","settings","relations","images","videos","sources","creativeWorks","posts","threads","longform","episodes","timelines","stage4Folders","timelineCategories"];const empty=()=>({schemaVersion:3,projects:[],projectFolders:[],...Object.fromEntries(CREATIVE_KINDS.map(k=>[k,[]]))});
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 let db=empty(),loadError=null;
 try{
