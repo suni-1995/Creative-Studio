@@ -2512,6 +2512,7 @@ syncCurrentExportProject();
       title:String(s?.title||'').trim(),
       body:String(s?.body||'').trim(),
       linkedIds:Array.isArray(s?.linkedIds)?s.linkedIds.filter(Boolean):[],
+      comments:Array.isArray(s?.comments)?s.comments.map(c=>({id:c.id||uid(),text:String(c.text||''),created:c.created||Date.now()})).filter(c=>c.text.trim()):[],
       created:s?.created||Date.now()+i,
       updated:s?.updated||s?.created||Date.now()+i
     })).filter(s=>s.title||s.body||s.linkedIds.length);
@@ -2536,7 +2537,7 @@ syncCurrentExportProject();
   function timelineSubPdfHtml(parent){
     const arr=ensureTimelineSubevents(parent);
     if(!arr.length) return '';
-    return `<section class="timelinePdfSubBlock"><h4>세부 사건</h4><div class="timelinePdfSubList">${arr.map(s=>`<div class="timelinePdfSubItem"><div class="timelinePdfSubTitle">${esc(s.title||'세부 사건')}</div><div class="timelinePdfSubBody">${esc(s.body||'내용 없음').replace(/\n/g,'<br>')}</div>${timelineSubLinksText(s.linkedIds)?`<div class="timelinePdfSubLinks">문서 링크 · ${esc(timelineSubLinksText(s.linkedIds))}</div>`:''}</div>`).join('')}</div></section>`;
+    return `<section class="timelinePdfSubBlock"><h4>세부 사건</h4><div class="timelinePdfSubList">${arr.map(s=>`<div class="timelinePdfSubItem"><div class="timelinePdfSubTitle">${esc(s.title||'세부 사건')}</div><div class="timelinePdfSubBody">${esc(s.body||'내용 없음').replace(/\n/g,'<br>')}</div>${timelineSubLinksText(s.linkedIds)?`<div class="timelinePdfSubLinks">문서 링크 · ${esc(timelineSubLinksText(s.linkedIds))}</div>`:''}${(s.comments||[]).length?`<div class="timelinePdfSubComments"><div class="timelinePdfSubCommentsTitle">코멘트</div>${s.comments.map(c=>`<div class="timelinePdfSubComment">${esc(c.text).replace(/\n/g,'<br>')}<div class="timelinePdfSubCommentTime">${esc(fmt(c.created))}</div></div>`).join('')}</div>`:''}</div>`).join('')}</div></section>`;
   }
   function timelineSubItemHtml(parentId,s,opts={}){
     const showActions=!!opts.actions;
@@ -2580,12 +2581,15 @@ syncCurrentExportProject();
     openModal(`<div class="stack"><h2>${subId?'세부 사건 수정':'세부 사건 추가'}</h2><div class="note">세부 사건은 상위 타임라인 항목 안에서만 관리됩니다.</div><input id="timelineSubTitle" placeholder="세부 사건 제목" value="${esc(existing.title||'')}"><textarea id="timelineSubBody" placeholder="세부 사건 내용을 입력해 주세요." style="min-height:150px">${esc(existing.body||'')}</textarea>${timelineSubLinkedPicker(existing.linkedIds||[])}<div class="right">${subId?`<button class="danger" onclick="deleteTimelineSubevent('${parentId}','${existing.id}')">삭제</button>`:''}<button onclick="viewDoc('timeline','${parentId}')">취소</button><button class="primary" onclick="saveTimelineSubevent('${parentId}','${existing.id}')">저장</button></div></div>`);
     const c=document.getElementById('modalCard'); if(c) c.scrollTop=0;
   };
+  function timelineSubCommentsHtml(parentId,sub){const rows=sub.comments||[];return `<section class="fix28CommentSection timelineSubComments"><div><b>코멘트</b><div class="meta">${rows.length}개</div></div><div class="fix28CommentList">${rows.length?rows.map(c=>`<div class="fix28Comment isEditable"><button class="fix28CommentDelete danger" type="button" aria-label="코멘트 삭제" onclick="deleteTimelineSubComment('${parentId}','${sub.id}','${c.id}')">×</button>${esc(c.text).replace(/\\n/g,'<br>')}<div class="meta">${fmt(c.created)}</div></div>`).join(''):'<div class="meta">아직 코멘트가 없습니다.</div>'}</div><div class="fix28CommentComposer"><textarea id="timelineSubCommentInput" placeholder="코멘트를 입력해 주세요."></textarea><button class="primary" type="button" onclick="addTimelineSubComment('${parentId}','${sub.id}')">추가</button></div></section>`}
+  window.addTimelineSubComment=function(parentId,subId){const parent=getDoc('timeline',parentId),sub=parent&&ensureTimelineSubevents(parent).find(s=>s.id===subId),input=document.getElementById('timelineSubCommentInput'),value=String(input?.value||'').trim();if(!sub||!value)return;sub.comments.push({id:uid(),text:value,created:Date.now()});parent.updated=Date.now();persist();openTimelineSubeventDetail(parentId,subId)};
+  window.deleteTimelineSubComment=function(parentId,subId,commentId){const parent=getDoc('timeline',parentId),sub=parent&&ensureTimelineSubevents(parent).find(s=>s.id===subId);if(!sub||!confirm('이 코멘트를 삭제할까요?'))return;sub.comments=sub.comments.filter(c=>c.id!==commentId);parent.updated=Date.now();persist();openTimelineSubeventDetail(parentId,subId)};
   window.openTimelineSubeventDetail=function(parentId,subId){
     const parent=getDoc('timeline',parentId);
     if(!parent)return alert('타임라인 항목을 찾을 수 없습니다.');
     const sub=ensureTimelineSubevents(parent).find(s=>s.id===subId);
     if(!sub)return alert('세부 사건을 찾을 수 없습니다.');
-    openModal(`<div class="stack"><h2>${esc(sub.title||'세부 사건')}</h2><div class="note">세부 사건</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;min-height:80px">${esc(sub.body||'내용 없음')}</div>${(sub.linkedIds||[]).length?`<div class="linkedBox"><b>연결 문서</b><div class="chips">${linkedChips(sub.linkedIds)}</div></div>`:''}<div class="right"><button onclick="viewDoc('timeline','${parentId}')">돌아가기</button><button class="primary" onclick="openTimelineSubeventEditor('${parentId}','${subId}')">수정</button></div></div>`);
+    openModal(`<div class="stack"><h2>${esc(sub.title||'세부 사건')}</h2><div class="note">세부 사건</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;min-height:80px">${esc(sub.body||'내용 없음')}</div>${(sub.linkedIds||[]).length?`<div class="linkedBox"><b>연결 문서</b><div class="chips">${linkedChips(sub.linkedIds)}</div></div>`:''}${timelineSubCommentsHtml(parentId,sub)}<div class="right"><button onclick="viewDoc('timeline','${parentId}')">돌아가기</button><button class="primary" onclick="openTimelineSubeventEditor('${parentId}','${subId}')">수정</button></div></div>`);
   };
   window.saveTimelineSubevent=function(parentId,subId){
     const parent=getDoc('timeline',parentId); if(!parent) return alert('타임라인 항목을 찾을 수 없습니다.');
@@ -2593,9 +2597,9 @@ syncCurrentExportProject();
     const body=(document.getElementById('timelineSubBody')?.value||'').trim();
     if(!title) return alert('세부 사건 제목을 입력해 주세요.');
     ensureTimelineSubevents(parent);
-    const obj={id:subId||uid(),title,body,linkedIds:timelineSubLinkedValues(),created:Date.now(),updated:Date.now()};
+    const obj={id:subId||uid(),title,body,linkedIds:timelineSubLinkedValues(),comments:[],created:Date.now(),updated:Date.now()};
     const idx=parent.subEvents.findIndex(s=>s.id===obj.id);
-    if(idx>=0) obj.created=parent.subEvents[idx].created||obj.created, parent.subEvents[idx]=obj;
+    if(idx>=0) obj.created=parent.subEvents[idx].created||obj.created, obj.comments=parent.subEvents[idx].comments||[], parent.subEvents[idx]=obj;
     else parent.subEvents.push(obj);
     parent.updated=Date.now();
     persist();
@@ -2701,7 +2705,7 @@ syncCurrentExportProject();
 
   const __pdfPrintCssFix24=pdfPrintCss;
   pdfPrintCss=function(){
-    return __pdfPrintCssFix24()+`\n.timelinePdfSubBlock{margin-top:14px}.timelinePdfSubBlock h4{font-size:10.4pt;margin:0 0 7px}.timelinePdfSubList{margin:0 0 0 8px;padding-left:12px;border-left:2px solid #d6d4db}.timelinePdfSubItem{margin:0 0 10px;font-size:9.6pt;line-height:1.55}.timelinePdfSubItem:last-child{margin-bottom:0}.timelinePdfSubTitle{font-size:10.3pt;font-weight:760;margin-bottom:3px}.timelinePdfSubBody{color:#3a3941}.timelinePdfSubLinks{margin-top:4px;color:#66626d;font-size:8.9pt}`;
+    return __pdfPrintCssFix24()+`\n.timelinePdfSubBlock{margin-top:14px}.timelinePdfSubBlock h4{font-size:10.4pt;margin:0 0 7px}.timelinePdfSubList{margin:0 0 0 8px;padding-left:12px;border-left:2px solid #d6d4db}.timelinePdfSubItem{margin:0 0 10px;font-size:9.6pt;line-height:1.55}.timelinePdfSubItem:last-child{margin-bottom:0}.timelinePdfSubTitle{font-size:10.3pt;font-weight:760;margin-bottom:3px}.timelinePdfSubBody{color:#3a3941} .timelinePdfSubLinks{margin-top:4px;color:#66626d;font-size:8.9pt}.timelinePdfSubComments{margin-top:8px;padding:7px 9px;border:1px solid #dedce3;border-radius:6px;background:#f7f6f8;break-inside:auto}.timelinePdfSubCommentsTitle{font-size:8.8pt;font-weight:700;margin-bottom:5px}.timelinePdfSubComment{padding:5px 0;border-top:1px solid #e5e3e9;font-size:8.6pt;line-height:1.5;overflow-wrap:anywhere;break-inside:avoid}.timelinePdfSubCommentTime{font-size:7.5pt;color:#777582;margin-top:3px}`;
   };
 })();
 
