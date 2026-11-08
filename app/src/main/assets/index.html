@@ -12587,6 +12587,7 @@ async function threadPdf(t,pid){
  }));
  return '<div class="sseolPdfThread"><h3>'+esc(t.name||'이름 없는 타래')+'</h3>'+(rows.length?rows.join(''):'<div class="meta">기록 없음</div>')+'</div>';
 }
+window.studioSseolThreadPdf=threadPdf;
 const baseExport=exportSelectedPdf;
 exportSelectedPdf=async function(){if(currentProjectType()==='sns'||v('selectExportCategory')!=='sseol')return baseExport.apply(this,arguments);const pid=v('exportProject'),p=(db.projects||[]).find(x=>x.id===pid),ids=[...document.querySelectorAll('input[name="pdfPick"]:checked')].map(e=>e.value).filter(x=>x.startsWith('sseol:')).map(x=>x.slice(6));if(!ids.length)return alert('내보낼 타래를 선택해 주세요.');if(!p)return;const selected=threads(pid).filter(t=>ids.includes(t.id));return appPrint(p.name+'_썰','<article class="pdfDoc"><header class="pdfHead"><div class="pdfEyebrow">썰 · 선택 타래</div><h1>'+esc(p.name)+'</h1><p class="lead">선택한 타래 '+selected.length+'개</p></header><div class="sseolPdfContents">'+(await Promise.all(selected.map(t=>threadPdf(t,pid)))).join('')+'</div></article>')};
 const baseCss=pdfPrintCss;
@@ -14464,7 +14465,7 @@ body.bulkSelecting .subsec:not(.hidden){
     const pid=(selector&&selector.value)||currentProjectId||'';
     const p=(db.projects||[]).find(x=>String(x.id)===String(pid));
     if(!p){fullPdfBusy=false;return alert('내보낼 프로젝트를 찾을 수 없습니다. 프로젝트를 선택해 주세요.');}
-    const defs=[['settings','설정'],['relations','관계도'],['characters','캐릭터'],['stories','썰 / 장문'],['serials','연재본'],['timeline','타임라인'],['images','이미지']];
+    const defs=[['settings','설정'],['relations','관계도'],['characters','캐릭터'],['stories','장문'],['sseol','썰'],['serials','연재본'],['timeline','타임라인'],['images','이미지']];
     let count=0;const sections=[];
     try{
       if(typeof SNS!=='undefined'&&p.projectType===SNS){
@@ -14473,6 +14474,16 @@ body.bulkSelecting .subsec:not(.hidden){
         sections.push(sns);count=1;
       }else{
         for(const [kind,label] of defs){
+          if(kind==='sseol'){
+            const threads=(db.socialThreads||[]).filter(t=>String(t.project)===String(pid)).sort((a,b)=>(a.created||0)-(b.created||0));
+            if(threads.length){
+              if(typeof window.studioSseolThreadPdf!=='function')throw Error('썰 PDF 변환기를 찾을 수 없습니다.');
+              const entries=[];
+              for(const t of threads){entries.push(await window.studioSseolThreadPdf(t,pid));count++;}
+              sections.push('<div class="fullPdfGroup fullSseolGroup"><h2 class="fullPdfCategory">썰</h2>'+entries.join('')+'</div>');
+            }
+            continue;
+          }
           const arr=(db[kind]||[]).filter(x=>String(x.project)===String(pid));
           if(!arr.length)continue;
           const entries=[];
@@ -14500,6 +14511,10 @@ body.bulkSelecting .subsec:not(.hidden){
         .fullPdfDoc .fullPdfGroup:not(:first-child){break-before:page!important;page-break-before:always!important}
         .fullPdfDoc .fullPdfGroup>.projectEntry:not(:nth-child(2)){break-before:page!important;page-break-before:always!important}
         .fullPdfDoc .fullPdfGroup>.projectEntry:nth-child(2){break-before:auto!important;page-break-before:auto!important}
+        .fullPdfDoc .fullSseolGroup{break-before:auto!important;page-break-before:auto!important}
+        .fullPdfDoc .fullSseolGroup .sseolPdfThread{break-before:auto!important;page-break-before:auto!important}
+        .fullPdfDoc .fullSseolGroup .sseolPdfImage{break-inside:avoid!important;page-break-inside:avoid!important}
+        .fullPdfDoc .fullSseolGroup .sseolPdfImage img{max-height:300px!important;height:auto!important;width:auto!important;max-width:100%!important;object-fit:contain!important}
         .fullPdfDoc .metaTable tr,.fullPdfDoc .pdfImage,.fullPdfDoc .pdfHero{break-inside:avoid;page-break-inside:avoid}
         .fullPdfDoc img{max-width:100%;max-height:230mm;object-fit:contain}`;
       const standalone=appPrintDocument(p.name+'_전체',body).replace('</style>',extraCss+'</style>');
