@@ -254,7 +254,12 @@ public class VideoLibraryActivity extends Activity {
         play.setBackground(rounded(dark ? Color.parseColor("#302D36") : Color.parseColor("#EFEDE9"), Color.TRANSPARENT, 10));
         play.setEnabled(percent < 0);
         if (id == null) importingAction = play;
-        play.setOnClickListener(v -> toast("재생 기능은 2차 개발에서 연결됩니다."));
+        play.setOnClickListener(v -> {
+            if (id == null) return;
+            Intent intent = new Intent(this, VideoPlayerActivity.class);
+            intent.putExtra("video_id", id);
+            startActivity(intent);
+        });
         LinearLayout.LayoutParams playParams = new LinearLayout.LayoutParams(dp(65), dp(42));
         playParams.leftMargin = dp(8);
         card.addView(play, playParams);
