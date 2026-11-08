@@ -5,15 +5,16 @@
   window.__creativeVideoMenuInstalled = true;
   function install() {
     if (!window.Android || typeof window.Android.openVideoLibrary !== 'function') return;
-    const more = document.getElementById('more');
+    const more = document.getElementById('more') || document.querySelector('[data-page="more"]');
     if (!more || more.classList.contains('hidden') || more.querySelector('#creative-video-library-entry')) return;
     const groups = Array.from(more.querySelectorAll('.studioMoreGroup'));
+    const existing = groups.find(group => { const h = group.querySelector('h3'); return h && h.textContent.replace(/\\s/g, '').includes('부가기능'); });
     const info = groups.find(group => {
       const h = group.querySelector('h3');
       return h && h.textContent.trim() === '안내';
     });
-    if (!info) return;
-    const group = document.createElement('div');
+    if (!info && !existing) return;
+    const group = existing || document.createElement('div');
     group.className = 'studioMoreGroup';
     group.setAttribute('data-video-library-group', 'true');
     const heading = document.createElement('h3');
@@ -23,9 +24,9 @@
     button.type = 'button';
     button.textContent = '▶　동영상 플레이어　›';
     button.addEventListener('click', () => window.Android.openVideoLibrary());
-    group.appendChild(heading);
+    if (!existing) group.appendChild(heading);
     group.appendChild(button);
-    info.parentNode.insertBefore(group, info);
+    if (!existing) info.parentNode.insertBefore(group, info);
   }
   let pending = false;
   const observer = new MutationObserver(() => {
