@@ -528,7 +528,6 @@ async function appPrintFull(title,html){
   if(!window.Android)return false;
   const doc=html.startsWith('<!doctype html>')?html:appPrintDocument(title,html);
   // Never synchronously flood the JavaScript bridge on the UI thread.
-  if(doc.length>4_000_000)throw new Error('PDF 용량이 인쇄 안전 한도를 초과했습니다. 이미지가 많은 경우 선택 항목 PDF로 나눠 저장해 주세요.');
   if(doc.length<400000){Android.printHtml(title,doc);return true;}
   if(typeof Android.beginPrintHtml!=='function'||typeof Android.appendPrintHtmlChunk!=='function'||typeof Android.finishPrintHtml!=='function')return false;
   Android.beginPrintHtml(title);
