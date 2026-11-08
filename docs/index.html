@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>창작소 — PC</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./creative.css"><script src="./storage.js" defer></script><script src="./app.js" defer></script><script src="./creative-media-store.js" defer></script><script src="./creative.js" defer></script></head>
+<title>창작소 — PC</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./creative.css"><link rel="stylesheet" href="./stage4.css"><script src="./storage.js" defer></script><script src="./app.js" defer></script><script src="./creative-media-store.js" defer></script><script src="./creative.js" defer></script><script src="./stage4.js" defer></script></head>
 <body><div class="app-shell">
 <header class="topbar"><div class="brand">✦ <span>창작소</span></div><div class="backup-actions"><button id="importBackup" class="button" type="button">백업 가져오기</button><button id="exportBackup" class="button" type="button">백업 내보내기</button></div></header>
 <div class="workspace"><aside class="sidebar"><nav class="side-nav"><button class="nav-button active" data-view="projects" type="button">▦ 프로젝트</button><button class="nav-button" data-view="more" type="button">☷ 더보기</button></nav><div class="side-note">창작소 PC</div></aside>
@@ -16,7 +16,7 @@
 <div class="creative-heading"><h2 id="creativeSectionTitle"></h2><small id="creativeCount"></small></div>
 <div class="creative-toolbar"><input class="field" id="creativeSearch" type="search" placeholder="이름·내용 검색"><select class="field" id="creativeTag" aria-label="태그 선택"><option value="">전체 태그</option></select><select class="field" id="creativeSort" aria-label="정렬"><option value="latest">최근 수정순</option><option value="created">최근 생성순</option><option value="name">이름순</option><option value="oldest">오래된순</option></select></div>
 <div id="creativeList" class="creative-list"></div>
-</section></section>
+</section><section id="stage4Workspace" hidden></section></section>
 <section data-panel="more" id="moreView" hidden><div class="section-heading"><p class="eyebrow">TOOLS & SETTINGS</p><h1>더보기</h1><p class="muted">창작 도구와 환경 설정</p></div><div class="more-grid"><article class="info-card"><h2>✧ 창작 도구</h2><p>창작 기능은 이후 개발 회차에서 순서대로 연결됩니다.</p></article><article class="info-card"><h2>⚙ 설정</h2><p>PC 창작소 설정 화면을 준비 중입니다.</p></article></div></section>
 </main></div>
 <dialog id="editorDialog" class="editor-dialog"><form id="editorForm"><div class="modal-head"><h2 id="editorTitle"></h2><button id="closeEditor" type="button" aria-label="닫기">×</button></div><div id="editorFields"></div><div class="form-actions"><button class="button" id="cancelEditor" type="button">취소</button><button class="button primary" type="submit">저장</button></div></form></dialog>
