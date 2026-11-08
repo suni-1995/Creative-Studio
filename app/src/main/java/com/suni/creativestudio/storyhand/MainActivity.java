@@ -557,6 +557,8 @@ public class MainActivity extends Activity {
             int n;
             while ((n = in.read(buffer)) >= 0) out.write(buffer, 0, n);
             String html = out.toString("UTF-8");
+            // Detachable video library menu; all library data remains outside project backups.
+            html = html.replace("</body>", "<script src=\"https://creative.local/extras/video-library-menu.js\"></script></body>");
             webView.loadDataWithBaseURL("https://creative.local/", html, "text/html", "UTF-8", null);
         } catch (Exception e) {
             webView.loadData("<h2>창작소를 불러오지 못했습니다.</h2>", "text/html", "UTF-8");
