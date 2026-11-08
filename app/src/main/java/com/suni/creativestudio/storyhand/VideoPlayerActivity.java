@@ -16,6 +16,7 @@ import android.widget.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
+import java.util.UUID;
 import java.util.Locale;
 
 /** Standalone foreground video playback. No project or music dependencies. */
@@ -175,7 +176,10 @@ public class VideoPlayerActivity extends Activity {
         id=item.optString("id");
         lastKnownPosition=prefs().getInt(key(),0);
         heading.setText(item.optString("title","동영상"));
-        File file=new File(new File(getFilesDir(),"video_library"),item.optString("file"));
+        String filename=item.optString("file");
+        try { UUID.fromString(id); } catch (IllegalArgumentException e) { loading=false; Toast.makeText(this,"잘못된 영상 정보입니다.",Toast.LENGTH_LONG).show(); return; }
+        if(!filename.equals(id+".video")) { loading=false; Toast.makeText(this,"영상 파일 경로가 올바르지 않습니다.",Toast.LENGTH_LONG).show(); return; }
+        File file=new File(new File(getFilesDir(),"video_library"),filename);
         if(!file.isFile()){ loading=false; Toast.makeText(this,"저장된 영상 파일이 없습니다.",Toast.LENGTH_LONG).show(); return; }
         try { video.stopPlayback(); video.setVideoPath(file.getAbsolutePath()); video.requestFocus(); }
         catch(Exception e){ loading=false; Toast.makeText(this,"영상 열기에 실패했습니다.",Toast.LENGTH_LONG).show(); }
