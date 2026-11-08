@@ -127,7 +127,7 @@ public class VideoPlayerActivity extends Activity {
             prefs().edit().remove(positionKey(currentId)).apply();
             if (index+1<videos.length()) open(index+1); else { prepared=true; toggle.setText("재생"); Toast.makeText(this,"마지막 영상 재생이 끝났습니다.",Toast.LENGTH_SHORT).show(); }
         });
-        video.setOnErrorListener((mp,what,extra)->{
+        video.setOnErrorListener((mp,what,errorCode)->{
             prepared=false; switching=false;
             Toast.makeText(this,"영상을 재생할 수 없습니다. 파일 또는 형식을 확인해 주세요.",Toast.LENGTH_LONG).show();
             return true;
