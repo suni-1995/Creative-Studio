@@ -62,8 +62,8 @@ function renderDetail(){
  if(p.pcCoverData){const img=document.createElement("img");img.src=p.pcCoverData;img.alt="프로젝트 대표 이미지";host.append(img);}
  else{host.textContent="✦";host.style.background=/^#[0-9a-f]{6}$/i.test(p.color)?p.color:"#7b61a8";}
 }
-function render(){renderFolders();renderProjects();if(screen==="detail"){renderDetail();window.CreativeStage3?.render();}}
-function openProject(id){if(!S.project(id))return;openedId=id;try{sessionStorage.setItem(LAST_OPEN_KEY,id);}catch(e){console.warn(e);}view("detail");renderDetail();window.CreativeStage3?.openProject(id);}
+function render(){renderFolders();renderProjects();if(screen==="detail"){renderDetail();window.CreativeStage3?.render();window.CreativeStage4?.render();}}
+function openProject(id){if(!S.project(id))return;openedId=id;try{sessionStorage.setItem(LAST_OPEN_KEY,id);}catch(e){console.warn(e);}view("detail");renderDetail();window.CreativeStage3?.openProject(id);window.CreativeStage4?.openProject(id);}
 function showDialog(){const d=$("editorDialog");if(d.showModal)d.showModal();else d.setAttribute("open","");}
 function closeDialog(){const d=$("editorDialog");if(d.close)d.close();else d.removeAttribute("open");editor={mode:"",id:""};imageDraft=undefined;}
 function folderSelect(id){
