@@ -8,7 +8,7 @@
     const more = document.getElementById('more') || document.querySelector('[data-page="more"]');
     if (!more || more.classList.contains('hidden') || more.querySelector('#creative-video-library-entry')) return;
     const groups = Array.from(more.querySelectorAll('.studioMoreGroup'));
-    const existing = groups.find(group => { const h = group.querySelector('h3'); return h && h.textContent.replace(/\\s/g, '').includes('부가기능'); });
+    const existing = groups.find(group => { const h = group.querySelector('h3'); return h && h.textContent.replace(/\s+/g, '').includes('부가기능'); });
     const info = groups.find(group => {
       const h = group.querySelector('h3');
       return h && h.textContent.trim() === '안내';
