@@ -27,7 +27,9 @@ public class VideoPlayerActivity extends Activity {
     private TextView title, clock;
     private LinearLayout root, controls;
     private Button toggle, full;
-    private boolean prepared, switching, fullscreen, seeking, ended, resumeOnForeground;
+    private boolean prepared, switching, fullscreen, seeking, ended, rotationPending;
+    private boolean wasPlayingBeforeRotation;
+    private int rotationPosition;
     private long lastSaved;
     private String currentId = "";
     private final Runnable ticker = new Runnable() {
@@ -117,11 +119,12 @@ public class VideoPlayerActivity extends Activity {
             prepared=true; switching=false; ended=false;
             int duration=video.getDuration();
             int saved=prefs().getInt(positionKey(currentId),0);
-            if (saved>0 && duration>0 && saved<duration-1000) video.seekTo(saved);
-            video.start(); toggle.setText("일시정지");
+            if (rotationPending) { video.seekTo(rotationPosition); rotationPending=false; if (wasPlayingBeforeRotation) video.start(); }
+            else { if (saved>0 && duration>0 && saved<duration-1000) video.seekTo(saved); video.start(); }
+            toggle.setText(video.isPlaying() ? "일시정지" : "재생");
         });
         video.setOnCompletionListener(mp->{
-            prepared=false; ended=true;
+            prepared=false; ended=true; switching=false;
             prefs().edit().remove(positionKey(currentId)).apply();
             if (index+1<videos.length()) open(index+1); else { toggle.setText("재생"); Toast.makeText(this,"마지막 영상 재생이 끝났습니다.",Toast.LENGTH_SHORT).show(); }
         });
@@ -174,14 +177,18 @@ public class VideoPlayerActivity extends Activity {
     @Override public void onBackPressed() {
         if (fullscreen) setFullscreen(false); else super.onBackPressed();
     }
+    @Override public void onConfigurationChanged(android.content.res.Configuration config) {
+        super.onConfigurationChanged(config);
+        // Keep the same VideoView instance across rotation; avoid losing playback position.
+    }
     @Override protected void onPause() {
         super.onPause();
-        if (video!=null && prepared) { resumeOnForeground=video.isPlaying(); checkpoint(); video.pause(); }
+        if (video!=null && prepared) { checkpoint(); video.pause(); }
     }
     @Override protected void onResume() {
         super.onResume();
         // Background playback is intentionally disabled; resume only by user action.
-        resumeOnForeground=false;
+
     }
     @Override protected void onDestroy() {
         checkpoint(); handler.removeCallbacks(ticker);
