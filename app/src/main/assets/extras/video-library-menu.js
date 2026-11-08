@@ -5,7 +5,7 @@
   window.__creativeVideoMenuInstalled = true;
   function install() {
     if (!window.Android || typeof window.Android.openVideoLibrary !== 'function') return;
-    const more = document.getElementById('more') || document.querySelector('[data-page="more"]');
+    const more = document.getElementById('studioMore');
     if (!more || more.classList.contains('hidden') || more.querySelector('#creative-video-library-entry')) return;
     const groups = Array.from(more.querySelectorAll('.studioMoreGroup'));
     const existing = groups.find(group => { const h = group.querySelector('h3'); return h && h.textContent.replace(/\s+/g, '').includes('부가기능'); });
