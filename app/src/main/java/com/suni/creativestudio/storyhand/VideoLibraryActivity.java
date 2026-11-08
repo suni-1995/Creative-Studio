@@ -39,6 +39,7 @@ public class VideoLibraryActivity extends Activity {
     private Button addButton;
     private String importingName = "";
     private volatile int importingPercent = -1;
+    private TextView importingAction;
 
     private int dp(float value) { return (int)(value * getResources().getDisplayMetrics().density + .5f); }
     private GradientDrawable rounded(int color, int border, int radius) {
@@ -180,7 +181,7 @@ public class VideoLibraryActivity extends Activity {
                         copied += n;
                         final int percent = total > 0 ? (int)Math.min(99, copied * 100 / total) : -1;
                         runOnUiThread(() -> {
-                            if (percent >= 0) { importingPercent = percent; progressBar.setProgress(percent); progressLabel.setText("등록 중: " + name + " (" + percent + "%)"); render(); }
+                            if (percent >= 0) { importingPercent = percent; progressBar.setProgress(percent); progressLabel.setText("등록 중: " + name + " (" + percent + "%)"); if (importingAction != null) importingAction.setText(percent + "%"); }
                             else progressLabel.setText("등록 중: " + name + " (" + readable(tempLength()) + ")");
                         });
                     }
@@ -214,6 +215,7 @@ public class VideoLibraryActivity extends Activity {
 
     private void render() {
         list.removeAllViews();
+        importingAction = null;
         if (copying && !importingName.isEmpty()) addVideoRow(importingName, null, importingPercent);
         if (videos.length() == 0 && !copying) {
             TextView empty = text("등록된 영상이 없습니다.", 14, secondary, false);
@@ -251,6 +253,7 @@ public class VideoLibraryActivity extends Activity {
         play.setPadding(dp(8), 0, dp(8), 0);
         play.setBackground(rounded(dark ? Color.parseColor("#302D36") : Color.parseColor("#EFEDE9"), Color.TRANSPARENT, 10));
         play.setEnabled(percent < 0);
+        if (id == null) importingAction = play;
         play.setOnClickListener(v -> toast("재생 기능은 2차 개발에서 연결됩니다."));
         LinearLayout.LayoutParams playParams = new LinearLayout.LayoutParams(dp(65), dp(42));
         playParams.leftMargin = dp(8);
