@@ -4,7 +4,7 @@
 "use strict";
 const KEY="creative-studio-pc-v1";
 const TYPES=[["advanced","고급 프로젝트"],["general","일반 프로젝트"],["short","단편 프로젝트"],["fanwork","2차창작 프로젝트"],["memo","메모 프로젝트"],["sns","SNS 프로젝트"],["ledger","가계부 프로젝트"],["diary","일기장 프로젝트"]];
-const CREATIVE_KINDS=["characters","settings","relations","images","videos","sources","creativeWorks","posts","threads","longform","episodes","timelines","stage4Folders","timelineCategories"];const empty=()=>({schemaVersion:3,projects:[],projectFolders:[],...Object.fromEntries(CREATIVE_KINDS.map(k=>[k,[]]))});
+const CREATIVE_KINDS=["characters","settings","relations","images","videos","sources","creativeWorks","posts","threads","socialPosts","socialThreads","longform","episodes","timelines","stage4Folders","timelineCategories"];const empty=()=>({schemaVersion:3,projects:[],projectFolders:[],...Object.fromEntries(CREATIVE_KINDS.map(k=>[k,[]]))});
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 let db=empty(),loadError=null;
 try{
@@ -56,5 +56,6 @@ function deleteFolder(id){
 }
 function upsertCreative(kind,data){if(!CREATIVE_KINDS.includes(kind))throw Error("지원하지 않는 자료입니다.");mutate(s=>{const at=s[kind].findIndex(x=>x.id===data.id);if(at<0)s[kind].push(data);else s[kind][at]=data;});}
 function removeCreative(kind,id,projectId){if(!CREATIVE_KINDS.includes(kind))throw Error("지원하지 않는 자료입니다.");mutate(s=>{s[kind]=s[kind].filter(x=>!(x.id===id&&x.project===projectId));if(kind==="relations"){for(const c of s.characters){c.relationIds=(c.relationIds||[]).filter(k=>k!==id);if(c.relationRanks)delete c.relationRanks[id];if(c.relationNotes)delete c.relationNotes[id];}}if(kind==="settings")for(const c of s.characters){if(c.raceId===id)c.raceId="";if(c.regionId===id)c.regionId="";}if(kind==="images"){for(const c of s.characters)if(c.portraitId===id)c.portraitId="";for(const w of s.creativeWorks)w.imageIds=(w.imageIds||[]).filter(x=>x!==id);}for(const other of ["characters","settings","relations"])for(const x of s[other])x.linkedIds=(x.linkedIds||[]).filter(ref=>ref!==kind+":"+id);});}
-window.CreativeStore={KEY,TYPES,getState:()=>db,project,folder,createProject,updateProject,deleteProject,createFolder,updateFolder,deleteFolder,upsertCreative,removeCreative,getLoadError:()=>loadError};
+function updateSocial(fn){mutate(s=>{s.socialThreads=s.socialThreads.map(x=>({...x}));s.socialPosts=s.socialPosts.map(x=>({...x}));fn(s);});}
+window.CreativeStore={updateSocial,KEY,TYPES,getState:()=>db,project,folder,createProject,updateProject,deleteProject,createFolder,updateFolder,deleteFolder,upsertCreative,removeCreative,getLoadError:()=>loadError};
 })();

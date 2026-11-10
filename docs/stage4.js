@@ -1,7 +1,7 @@
 (()=>{
 "use strict";
 const S=window.CreativeStore,root=document.getElementById("stage4Workspace");
-const K={posts:"SNS 게시글",threads:"썰타래",longform:"장문",episodes:"연재본",timelines:"타임라인"};
+const K={posts:"SNS 게시글",threads:"썰",longform:"장문",episodes:"연재본",timelines:"타임라인"};
 let project="",kind="posts",query="",sort="latest",folder="",category="",current="";
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
@@ -15,15 +15,17 @@ const button=(text,fn,cls="button")=>{let b=document.createElement("button");b.t
 function save(k,data){S.upsertCreative(k,data);}
 function remove(k,x){if(!confirm("삭제할까요?"))return;S.removeCreative(k,x.id,project);if(current===x.id)current="";render();}
 function options(k,selected=""){return rows(k).map(x=>'<option value="'+esc(x.id)+'" '+(selected===x.id?"selected":"")+'>'+esc(label(x))+'</option>').join("");}
-function openProject(id){project=id;kind="posts";query="";folder="";category="";current="";render();}
+function openProject(id){project=id;kind="longform";query="";folder="";category="";current="";render();}
 function available(){return !!project&&!!S.project(project);}
 function render(){
- if(!available()){root.hidden=true;return;}root.hidden=false;
+ if(!available()||!["sns","advanced","general","short","fanwork"].includes(S.project(project).projectType)){root.hidden=true;return;}root.hidden=false;
  const p=S.project(project),isSNS=p.projectType==="sns";
- const kinds=isSNS?["posts","threads","timelines"]:Object.keys(K);
+ if(isSNS){window.CreativeSNS.render(root,project);return;}
+ const kinds=[...(["advanced","general","short"].includes(p.projectType)?["threads"]:[]),"longform","episodes",...(p.projectType!=="short"?["timelines"]:[])];
  if(!kinds.includes(kind))kind=kinds[0];
- root.innerHTML='<div class="stage4-head"><h2>글쓰기 · SNS · 썰타래 · 타임라인</h2><nav class="stage4-tabs">'+kinds.map(k=>'<button class="button '+(k===kind?"primary":"")+'" data-kind="'+k+'">'+K[k]+'</button>').join("")+'</nav></div><div class="stage4-toolbar"><input id="s4Search" class="field" placeholder="검색" value="'+esc(query)+'"><select id="s4Sort" class="field"><option value="latest">최근 수정순</option><option value="created">최근 생성순</option><option value="name">제목순</option><option value="order">연재 순서</option></select><select id="s4Folder" class="field"><option value="">전체 폴더</option>'+rows("stage4Folders").filter(x=>x.kind===kind).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("")+'</select>'+(kind==="timelines"?'<select id="s4Category" class="field"><option value="">전체 분류</option>'+rows("timelineCategories").map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("")+'</select>':"")+'</div><div class="stage4-actions"></div><div class="stage4-list"></div><div class="stage4-detail"></div>';
+ root.innerHTML='<div class="stage4-head"><h2>글쓰기</h2><nav class="stage4-tabs">'+kinds.map(k=>'<button class="button '+(k===kind?"primary":"")+'" data-kind="'+k+'">'+K[k]+'</button>').join("")+'</nav></div><div class="stage4-toolbar"><input id="s4Search" class="field" placeholder="검색" value="'+esc(query)+'"><select id="s4Sort" class="field"><option value="latest">최근 수정순</option><option value="created">최근 생성순</option><option value="name">제목순</option><option value="order">연재 순서</option></select><select id="s4Folder" class="field"><option value="">전체 폴더</option>'+rows("stage4Folders").filter(x=>x.kind===kind).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("")+'</select>'+(kind==="timelines"?'<select id="s4Category" class="field"><option value="">전체 분류</option>'+rows("timelineCategories").map(x=>'<option value="'+esc(x.id)+'">'+esc(x.title)+'</option>').join("")+'</select>':"")+'</div><div class="stage4-actions"></div><div class="stage4-list"></div><div class="stage4-detail"></div>';
  root.querySelectorAll("[data-kind]").forEach(b=>b.onclick=()=>{kind=b.dataset.kind;current="";query="";folder="";category="";render();});
+ if(kind==="threads"){const host=document.createElement("div");root.querySelectorAll(".stage4-toolbar,.stage4-actions,.stage4-list,.stage4-detail").forEach(e=>e.remove());root.append(host);window.CreativeSNS.render(host,project);return;}
  const q=root.querySelector("#s4Search");q.oninput=()=>{query=q.value;renderList();};
  const st=root.querySelector("#s4Sort");st.value=sort;st.onchange=()=>{sort=st.value;renderList();};
  const f=root.querySelector("#s4Folder");f.value=folder;f.onchange=()=>{folder=f.value;renderList();};
