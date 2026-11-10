@@ -28,6 +28,7 @@ function migrate(pid){
   s.pcSocialMigrated=[...(s.pcSocialMigrated||[]),pid];
  });
 }
+function ask(text,action){const d=dialog(text);d.append(button("취소",()=>d.close()),button("삭제 확인",()=>{action();d.close();}));d.showModal();}
 function quoteTarget(q){return q&&(S.getState()[q.kind]||[]).find(x=>x.id===q.id&&x.project===q.projectId);}
 async function preview(q){
  const x=quoteTarget(q),d=dialog(x?title(x):"인용 원본을 찾을 수 없습니다.");
@@ -43,9 +44,9 @@ function render(host,pid){guard(()=>{
  const tools=document.createElement("div");tools.className="stage4-toolbar";
  const picker=document.createElement("select");picker.className="field";picker.setAttribute("aria-label","타래 선택");
  for(const t of threads(pid)){const o=new Option(title(t)+" ("+posts(pid,t.id).length+")",t.id);picker.add(o);}picker.value=tid;picker.onchange=()=>{selected.set(pid,picker.value);render(host,pid);};tools.append(picker);
- const rename=t=>{const value=prompt(t?"타래 이름 수정":"새 타래 이름",t?title(t):"");if(!value?.trim())return;const now=Date.now();const data={...(t||{}),id:t?.id||uid(),project:pid,name:value.trim(),created:t?.created||now,updated:now};S.upsertCreative("socialThreads",data);selected.set(pid,data.id);render(host,pid);};
+ const rename=t=>{const d=dialog(t?"타래 이름 수정":"새 타래"),f=document.createElement("form");f.className="stage4-form";f.innerHTML='<label>타래 이름<input name="name" class="field" required maxlength="200" value="'+esc(t?title(t):"")+'"></label><button type="submit" class="button primary">저장</button>';f.append(button("취소",()=>d.close()));d.append(f);f.onsubmit=e=>{e.preventDefault();guard(()=>{const name=f.elements.name.value.trim();if(!name)throw Error("타래 이름을 입력하세요.");const now=Date.now(),data={...(t||{}),id:t?.id||uid(),project:pid,name,created:t?.created||now,updated:now};S.upsertCreative("socialThreads",data);selected.set(pid,data.id);d.close();render(host,pid);});};d.showModal();};
  tools.append(button("+ 새 타래",()=>rename()));const thread=threads(pid).find(t=>t.id===tid);
- if(thread){tools.append(button("타래 이름 수정",()=>rename(thread)),button("타래 삭제",()=>{if(!confirm("이 타래와 안의 기록을 삭제할까요?"))return;S.updateSocial(s=>{s.socialThreads=s.socialThreads.filter(t=>!(t.project===pid&&t.id===tid));s.socialPosts=s.socialPosts.filter(p=>!(p.project===pid&&p.threadId===tid)).map(p=>p.project===pid&&p.threadLinkId===tid?{...p,threadLinkId:""}:p);});render(host,pid);}));}
+ if(thread){tools.append(button("타래 이름 수정",()=>rename(thread)),button("타래 삭제",()=>ask("이 타래와 안의 기록을 삭제할까요?",()=>{S.updateSocial(s=>{s.socialThreads=s.socialThreads.filter(t=>!(t.project===pid&&t.id===tid));s.socialPosts=s.socialPosts.filter(p=>!(p.project===pid&&p.threadId===tid)).map(p=>p.project===pid&&p.threadLinkId===tid?{...p,threadLinkId:""}:p);});render(host,pid);})));}
  host.append(tools);if(!thread)return;
  const search=document.createElement("input");search.className="field";search.placeholder="현재 타래 검색";search.setAttribute("aria-label","현재 타래 검색");host.append(search);
  const feed=document.createElement("div");feed.className="sns-feed";host.append(feed);
@@ -57,7 +58,7 @@ function render(host,pid){guard(()=>{
  for(const ref of p.pcLegacyLinks||[]){const i=ref.indexOf(":"),kind=ref.slice(0,i),id=ref.slice(i+1);if(kind==="threads"){const t=threads(pid).find(t=>t.id===id);if(t)card.append(button("↗ "+title(t),()=>{selected.set(pid,id);render(host,pid);}));}else card.append(button("기존 연결 · "+ref,()=>preview({projectId:pid,kind,id})));}
  for(const id of p.images||[]){const img=document.createElement("img");img.alt="기록 첨부 이미지";img.className="sns-image";card.append(img);M.get(id).then(data=>{if(data)img.src=data;}).catch(error);}
  for(const a of p.attachments||[]){const link=document.createElement("a");link.textContent=a.name;link.href=a.data;link.download=a.name;card.append(link);}
- const meta=document.createElement("small");meta.textContent=new Date(p.created).toLocaleString("ko-KR");card.append(meta,button("수정",()=>editPost(host,pid,tid,p)),button("삭제",()=>{if(confirm("기록을 삭제할까요?")){S.removeCreative("socialPosts",p.id,pid);draw();}}));feed.append(card);
+ const meta=document.createElement("small");meta.textContent=new Date(p.created).toLocaleString("ko-KR");card.append(meta,button("수정",()=>editPost(host,pid,tid,p)),button("삭제",()=>ask("기록을 삭제할까요?",()=>{S.removeCreative("socialPosts",p.id,pid);draw();})));feed.append(card);
  }if(!feed.childElementCount)feed.textContent="기록이 없습니다.";};search.oninput=draw;draw();
  host.append(button("+ 기록 작성",()=>editPost(host,pid,tid)));
  });}
