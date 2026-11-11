@@ -21,7 +21,7 @@ final class ProjectAlarm {
     static int code(String id){return id.hashCode() & 0x7fffffff;}
     static PendingIntent pending(Context c,String id,int flags){
         Intent i=new Intent(c,ProjectAlarmReceiver.class).setAction(ACTION).setData(android.net.Uri.parse("creative-alarm://"+android.net.Uri.encode(id))).putExtra("id",id);
-        return PendingIntent.getBroadcast(c,code(id),flags|PendingIntent.FLAG_IMMUTABLE);
+        return PendingIntent.getBroadcast(c,code(id),i,flags|PendingIntent.FLAG_IMMUTABLE);
     }
     static void cancel(Context c,String id){
         ((AlarmManager)c.getSystemService(Context.ALARM_SERVICE)).cancel(pending(c,id,PendingIntent.FLAG_UPDATE_CURRENT));
