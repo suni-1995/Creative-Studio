@@ -61,6 +61,8 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 
 public class MainActivity extends Activity {
+    private static final int REQ_PROJECT_ALARM_NOTIFICATION = 1010;
+    private String pendingAlarmProjectId = null;
     private static final int REQ_FILE = 1001;
     private static final int REQ_SAVE = 1002;
     private static final int REQ_ZIP_IMPORT = 1003;
@@ -107,6 +109,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ProjectAlarm.channel(this);
+        pendingAlarmProjectId = getIntent().getStringExtra("alarm_project_id");
 
         // Restore the last selected appearance before the splash is drawn.
         appDarkMode = getSharedPreferences("creative_studio_prefs", MODE_PRIVATE)
@@ -256,6 +260,7 @@ public class MainActivity extends Activity {
                 // Load the optional menu only after the main document has finished.
                 // Never block or rewrite the original startup HTML.
                 if (url != null && url.startsWith("https://creative.local/")) {
+                    openPendingAlarmProject();
                     try (InputStream videoMenu = getAssets().open("extras/video-library-menu.js");
                          ByteArrayOutputStream videoMenuBytes = new ByteArrayOutputStream()) {
                         byte[] chunk = new byte[4096];
@@ -349,6 +354,23 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         evalJs("window.syncNativeMusicState&&window.syncNativeMusicState()");
+        openPendingAlarmProject();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        pendingAlarmProjectId = intent.getStringExtra("alarm_project_id");
+        openPendingAlarmProject();
+    }
+
+    private void openPendingAlarmProject() {
+        if (pendingAlarmProjectId == null || webView == null) return;
+        String id = pendingAlarmProjectId;
+        pendingAlarmProjectId = null;
+        String quoted = JSONObject.quote(id);
+        evalJs("(function retryAlarmProject(n){if(window.openAlarmProjectFromNotification){window.openAlarmProjectFromNotification(" + quoted + ");}else if(n<30){setTimeout(function(){retryAlarmProject(n+1)},200)}})(0)");
     }
 
     @Override
@@ -361,7 +383,10 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_AUDIO_PERMISSION) {
+        if (requestCode == REQ_PROJECT_ALARM_NOTIFICATION) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            evalJs("window.onProjectAlarmNotificationPermission&&window.onProjectAlarmNotificationPermission(" + granted + ")");
+        } else if (requestCode == REQ_AUDIO_PERMISSION) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             evalJs("window.onMusicPermissionResult&&window.onMusicPermissionResult(" + (granted ? "true" : "false") + ")");
         } else if (requestCode == REQ_NOTIFICATION_PERMISSION) {
@@ -1191,6 +1216,12 @@ public class MainActivity extends Activity {
     }
 
     private class NativeBridge {
+        @JavascriptInterface public String getProjectAlarm(String id) { return ProjectAlarm.get(MainActivity.this,id).toString(); }
+        @JavascriptInterface public String saveProjectAlarm(String json) { return ProjectAlarm.save(MainActivity.this,json); }
+        @JavascriptInterface public void removeProjectAlarm(String id) { ProjectAlarm.remove(MainActivity.this,id); }
+        @JavascriptInterface public boolean hasProjectAlarmNotificationPermission() { return android.os.Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED; }
+        @JavascriptInterface public boolean isProjectAlarmExact() { return android.os.Build.VERSION.SDK_INT < 31 || ((android.app.AlarmManager)getSystemService(ALARM_SERVICE)).canScheduleExactAlarms(); }
+        @JavascriptInterface public void requestProjectAlarmNotificationPermission() { if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},REQ_PROJECT_ALARM_NOTIFICATION)); }
         @JavascriptInterface
         public void openVideoLibrary() {
             runOnUiThread(() -> startActivity(new Intent(MainActivity.this, VideoLibraryActivity.class)));
