@@ -84,8 +84,9 @@ function inputView(x){
  return html+'</div>';
 }
 function bindInputs(host,x){
- host.querySelector('#ledgerType')?.addEventListener('change',()=>{const t=v('ledgerType');const a=t==='card'?'installment':t==='saving'?'deposit':'';const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:t,action:a,date:v('ledgerDate')});bindInputs(host)});
- host.querySelector('#ledgerAction')?.addEventListener('change',()=>{const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:v('ledgerType'),action:v('ledgerAction'),date:v('ledgerDate'),targetId:v('ledgerTarget')});bindInputs(host)});
+ const read=(key)=>host.querySelector('.ledgerExtForm #'+key)?.value||'';
+ host.querySelector('#ledgerType')?.addEventListener('change',()=>{const t=read('ledgerType');const a=t==='card'?'installment':t==='saving'?'deposit':'';const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:t,action:a,date:read('ledgerDate')});bindInputs(host)});
+ host.querySelector('#ledgerAction')?.addEventListener('change',()=>{const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:read('ledgerType'),action:read('ledgerAction'),date:read('ledgerDate'),targetId:read('ledgerTarget')});bindInputs(host)});
  enhanceAllSelects(host);
  ledgerEmptyTargetMessage(host.querySelector('#ledgerTarget'));
 }
@@ -132,18 +133,21 @@ function ledgerEmptyTargetMessage(target){
 
 window.ledgerSaveExtended=function(id=''){
  const old=entries().find(x=>x.id===id);
- const type=v('ledgerType'),action=v('ledgerAction'),date=v('ledgerDate');
+ const root=id?document.querySelector('#modalCard .ledgerExtForm'):document.querySelector('#projectRecent .ledgerExtForm');
+ if(!root)return alert('입력창을 찾을 수 없습니다.');
+ const read=(key)=>root.querySelector('#'+key)?.value||'';
+ const type=read('ledgerType'),action=read('ledgerAction'),date=read('ledgerDate');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return alert('날짜를 선택해 주세요.');
- const amount=type==='saving'&&action==='close'?0:num(v('ledgerAmount'));
+ const amount=type==='saving'&&action==='close'?0:num(read('ledgerAmount'));
  if(!(type==='saving'&&action==='close')&&!valid(amount))return alert('올바른 금액을 입력해 주세요.');
- const targetId=v('ledgerTarget');
+ const targetId=read('ledgerTarget');
  if(!['expense','income'].includes(type)&&!targetId)return alert('항목을 먼저 등록해 주세요.');
- const months=num(v('ledgerMonths')),firstMonth=v('ledgerFirstMonth'),targetMonth=v('ledgerTargetMonth');
+ const months=num(read('ledgerMonths')),firstMonth=read('ledgerFirstMonth'),targetMonth=read('ledgerTargetMonth');
  if(type==='card'&&action==='installment'&&(!Number.isSafeInteger(months)||months<1||months>600||!firstMonth))return alert('할부 개월 수와 첫 반영 월을 확인해 주세요.');
  if(type==='card'&&action==='charge'&&!targetMonth)return alert('납부 대상 월을 선택해 주세요.');
  if(type==='saving'&&action==='deposit'&&items('ledgerSavings').find(z=>z.id===targetId)?.closed)return alert('해지된 적금에는 입금할 수 없습니다.');
  if(type==='saving'&&action==='close'&&items('ledgerSavings').find(z=>z.id===targetId)?.closed&&!old)return alert('이미 해지된 적금입니다.');
- const obj={id:id||uid(),project:currentProjectId,type,action,date,amount,targetId,months:type==='card'&&action==='installment'?months:undefined,firstMonth:type==='card'&&action==='installment'?firstMonth:undefined,targetMonth:type==='card'&&action==='charge'?targetMonth:undefined,category:v('ledgerCategory')||'기타',note:v('ledgerNote').trim(),created:old?.created||Date.now(),updated:Date.now()};
+ const obj={id:id||uid(),project:currentProjectId,type,action,date,amount,targetId,months:type==='card'&&action==='installment'?months:undefined,firstMonth:type==='card'&&action==='installment'?firstMonth:undefined,targetMonth:type==='card'&&action==='charge'?targetMonth:undefined,category:read('ledgerCategory')||'기타',note:read('ledgerNote').trim(),created:old?.created||Date.now(),updated:Date.now()};
  if(old)Object.assign(old,obj);else db.ledgerEntries.unshift(obj);
  refreshSavingStates();
  persist();ledgerSelectedDate=date;closeModal();renderLedgerAll();renderProjects();
