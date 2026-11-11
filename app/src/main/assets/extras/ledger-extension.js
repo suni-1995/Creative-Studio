@@ -87,20 +87,49 @@ function bindInputs(host,x){
  host.querySelector('#ledgerType')?.addEventListener('change',()=>{const t=v('ledgerType');const a=t==='card'?'installment':t==='saving'?'deposit':'';const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:t,action:a,date:v('ledgerDate')});bindInputs(host)});
  host.querySelector('#ledgerAction')?.addEventListener('change',()=>{const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:v('ledgerType'),action:v('ledgerAction'),date:v('ledgerDate'),targetId:v('ledgerTarget')});bindInputs(host)});
  enhanceAllSelects(host);
+ ledgerEmptyTargetMessage(host.querySelector('#ledgerTarget'));
 }
+function ledgerRegistrationClose(){
+ document.getElementById('ledgerRegistrationOverlay')?.remove();
+}
+window.ledgerRegistrationClose=ledgerRegistrationClose;
 window.ledgerAddTarget=function(type){
- const name=prompt(type==='card'?'카드 이름':type==='saving'?'적금 이름':'비용 항목 이름');
- if(!name?.trim())return;
  const key=type==='card'?'ledgerCards':type==='saving'?'ledgerSavings':'ledgerBudgets';
- if(items(key).some(x=>x.name===name.trim()))return alert('같은 이름이 이미 등록되어 있습니다.');
- let amount=0;
- if(type==='budget'){const value=prompt('설정 금액 (원)');amount=num(value);if(!valid(amount))return alert('올바른 설정 금액을 입력해 주세요.')}
- const item={id:uid(),project:currentProjectId,name:name.trim(),amount,closed:false,created:Date.now()};
- db[key].push(item);persist();
- const target=document.getElementById('ledgerTarget');
- if(target){target.innerHTML=items(key).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');target.value=item.id;syncAppSelect(target)}
- renderLedgerCalendar();
+ const title=type==='card'?'신용카드':type==='saving'?'적금':'기타 사용 비용';
+ ledgerRegistrationClose();
+ const overlay=document.createElement('div');
+ overlay.id='ledgerRegistrationOverlay';
+ overlay.className='ledgerRegistrationOverlay';
+ overlay.innerHTML='<div class="ledgerRegistrationDialog" role="dialog" aria-modal="true" aria-label="'+title+' 항목 등록"><h3>'+title+' 항목 등록</h3><label>이름<input id="ledgerRegisterName" type="text" autocomplete="off" placeholder="항목 이름"></label>'+(type==='budget'?'<label>설정 금액 (원)<input id="ledgerRegisterAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="금액 입력"></label>':'')+'<p id="ledgerRegisterError" class="ledgerRegisterError" aria-live="polite"></p><div class="ledgerRegistrationActions"><button type="button" onclick="ledgerRegistrationClose()">취소</button><button type="button" class="primary" id="ledgerRegisterConfirm">등록</button></div></div>';
+ overlay.addEventListener('click',e=>{if(e.target===overlay)ledgerRegistrationClose()});
+ document.body.appendChild(overlay);
+ overlay.querySelector('#ledgerRegisterConfirm').onclick=()=>{
+  const name=overlay.querySelector('#ledgerRegisterName').value.trim();
+  const amount=type==='budget'?num(overlay.querySelector('#ledgerRegisterAmount').value):0;
+  const error=overlay.querySelector('#ledgerRegisterError');
+  if(!name){error.textContent='항목 이름을 입력해 주세요.';return}
+  if(items(key).some(x=>x.name===name)){error.textContent='같은 이름이 이미 등록되어 있습니다.';return}
+  if(type==='budget'&&!valid(amount)){error.textContent='올바른 설정 금액을 입력해 주세요.';return}
+  const item={id:uid(),project:currentProjectId,name,amount,closed:false,created:Date.now()};
+  db[key].push(item);persist();
+  const target=document.getElementById('ledgerTarget');
+  if(target){target.innerHTML=items(key).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');target.value=item.id;syncAppSelect(target);ledgerEmptyTargetMessage(target)}
+  ledgerRegistrationClose();
+  renderLedgerCalendar();
+ };
+ overlay.querySelector('#ledgerRegisterName').focus();
 };
+function ledgerEmptyTargetMessage(target){
+ if(!target)return;
+ const empty=target.options.length===0;
+ const button=target.nextElementSibling;
+ if(button?.classList.contains('appSelectButton')){
+  button.textContent=empty?'항목이 없습니다. 추가해 주세요':target.options[target.selectedIndex]?.textContent||'선택';
+  if(empty)button.onclick=()=>{const old=document.getElementById('ledgerEmptyTargetHint');old?.remove();const hint=document.createElement('div');hint.id='ledgerEmptyTargetHint';hint.className='ledgerEmptyTargetHint';hint.textContent='항목이 없습니다. 추가해 주세요';button.closest('.ledgerExtField')?.appendChild(hint)};
+  else button.onclick=()=>openAppSelect(target);
+ }
+}
+
 window.ledgerSaveExtended=function(id=''){
  const old=entries().find(x=>x.id===id);
  const type=v('ledgerType'),action=v('ledgerAction'),date=v('ledgerDate');
@@ -155,4 +184,5 @@ trashProject=function(pid){
  if(bundle){for(const k of KEYS){bundle.data.items[k]=extras[k];db[k]=db[k].filter(x=>x.project!==pid)}persist()}
 };
 const ledgerLayoutStyle=document.createElement('style');ledgerLayoutStyle.textContent="\n/* Ledger extension: responsive form and summary layout, scoped to ledger only. */\n.ledgerExtForm{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;align-items:end}\n.ledgerExtForm .ledgerExtField{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0}\n.ledgerExtForm .ledgerExtField>span{font-size:12px;color:var(--muted);font-weight:650}\n.ledgerExtForm .ledgerExtField input,.ledgerExtForm .ledgerExtField select{width:100%!important;min-width:0;max-width:100%;box-sizing:border-box;height:48px;margin:0}\n.ledgerExtForm .ledgerExtField .appSelectButton{width:100%!important;min-width:0;max-width:100%;height:48px;box-sizing:border-box;text-align:left;margin:0}\n.ledgerExtForm>button{min-height:48px;width:100%;margin:0}\n.ledgerExtForm>button.full{grid-column:1/-1}\n.ledgerExtTotals{display:grid;gap:12px;margin:16px 0 4px;min-width:0}\n.ledgerExtSection{min-width:0;padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}\n.ledgerExtSection h4{margin:0 0 12px;font-size:14px;line-height:1.5}\n.ledgerExtSectionBody{display:grid;gap:9px}\n.ledgerExtLine{min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg,var(--card));display:grid;gap:10px}\n.ledgerExtLine>b{font-size:13px;overflow-wrap:anywhere}\n.ledgerExtMetrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}\n.ledgerExtMetrics>span{display:flex;flex-direction:column;gap:5px;min-width:0}\n.ledgerExtMetrics small{font-size:11px;color:var(--muted)}\n.ledgerExtMetrics strong{font-size:12px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}\n.ledgerExtEmpty{font-size:12px;color:var(--muted);margin:0}\n.ledgerCalendarWrap .toolbar{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:8px}\n.ledgerCalendarWrap .toolbar>b{text-align:center}\n.ledgerCalendarWrap .toolbar>button{width:42px;height:42px;min-width:0;padding:0}\n@media(max-width:640px){.ledgerExtForm{grid-template-columns:minmax(0,1fr)!important}.ledgerExtForm>button.full{grid-column:1}.ledgerExtSection{padding:12px}.ledgerExtMetrics{gap:6px}.ledgerExtMetrics strong{font-size:11px}}\n";document.head.appendChild(ledgerLayoutStyle);
+const ledgerRegistrationStyle=document.createElement('style');ledgerRegistrationStyle.textContent="\n.ledgerRegistrationOverlay{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.65);box-sizing:border-box}\n.ledgerRegistrationDialog{width:min(100%,420px);max-height:calc(100dvh - 40px);overflow:auto;padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--text);box-shadow:0 18px 48px rgba(0,0,0,.3);box-sizing:border-box}\n.ledgerRegistrationDialog h3{font-size:17px;margin:0 0 20px}\n.ledgerRegistrationDialog label{display:flex;flex-direction:column;gap:8px;margin:0 0 14px;font-size:13px;color:var(--muted)}\n.ledgerRegistrationDialog input{display:block;width:100%;min-width:0;box-sizing:border-box;height:48px;border:1px solid var(--line);border-radius:12px;padding:0 14px;background:var(--card);color:var(--text);font-size:15px}\n.ledgerRegistrationActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}\n.ledgerRegistrationActions button{min-height:46px;border-radius:12px}\n.ledgerRegisterError{font-size:12px;color:#db7070;min-height:16px;margin:4px 0}\n.ledgerEmptyTargetHint{margin-top:7px;font-size:12px;color:var(--muted);line-height:1.5}\n.ledgerExtDayList{margin-top:18px!important}\n.ledgerExtDayList .ledgerEntry{margin:0}\n.ledgerExtForm+.ledgerExtDayList{margin-top:18px}\n";document.head.appendChild(ledgerRegistrationStyle);
 })();
