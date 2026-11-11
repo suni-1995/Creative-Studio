@@ -11489,7 +11489,7 @@ new MutationObserver(()=>{const input=document.getElementById('musicSearch');if(
 #studioHub .studioHubEmbedded{display:block!important;margin:0!important;min-width:0;width:100%}
 #studioHub .studioHubDirect{min-width:0;overflow:visible}
 #studioHubEmbeddedSlot{min-width:0}
-#studioHubEmbeddedSlot .quickMemoList .quickMemoCard:nth-child(n+4),#studioHubEmbeddedSlot .ledgerMemoList>.item:nth-child(n+4){display:none}
+#studioHubEmbeddedSlot .quickMemoList{max-height:420px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;align-content:start}
 #studioHubEmbeddedSlot.studioQuickExpanded .quickMemoList,#studioHubEmbeddedSlot.studioQuickExpanded .ledgerMemoList{max-height:55vh;overflow-y:auto;overscroll-behavior:contain}
 #studioHubEmbeddedSlot.studioQuickExpanded .quickMemoList .quickMemoCard:nth-child(n+4),#studioHubEmbeddedSlot.studioQuickExpanded .ledgerMemoList>.item:nth-child(n+4){display:block}
 #studioQuickMore{display:block;margin:12px auto 0;min-width:110px}
@@ -11585,7 +11585,7 @@ function updateQuickMemoExpansion(){
  const slot=document.getElementById('studioHubEmbeddedSlot');if(!slot)return;
  slot.classList.toggle('studioQuickExpanded',quickMemoExpanded);
  const more=document.getElementById('studioQuickMore');
- if(more){const count=slot.querySelectorAll('.quickMemoList .quickMemoCard, .ledgerMemoList>.item').length;more.hidden=count<=3;more.textContent=quickMemoExpanded?'접기':'더보기 ('+(count-3)+')';}
+ if(more){more.hidden=!!slot.querySelector('.quickMemoList');if(!more.hidden){const count=slot.querySelectorAll('.ledgerMemoList>.item').length;more.hidden=count<=3;more.textContent=quickMemoExpanded?'접기':'더보기 ('+(count-3)+')';}}
 }
 async function renderHub(){
  const p=proj(currentProjectId),box=document.getElementById('studioHub');if(!p||!box)return;
