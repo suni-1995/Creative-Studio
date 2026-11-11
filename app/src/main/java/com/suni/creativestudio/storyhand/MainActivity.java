@@ -355,6 +355,7 @@ public class MainActivity extends Activity {
         super.onResume();
         evalJs("window.syncNativeMusicState&&window.syncNativeMusicState()");
         openPendingAlarmProject();
+        if (android.os.Build.VERSION.SDK_INT >= 31) ProjectAlarm.restore(this);
     }
 
     @Override
@@ -1221,6 +1222,19 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void removeProjectAlarm(String id) { ProjectAlarm.remove(MainActivity.this,id); }
         @JavascriptInterface public boolean hasProjectAlarmNotificationPermission() { return android.os.Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED; }
         @JavascriptInterface public boolean isProjectAlarmExact() { return android.os.Build.VERSION.SDK_INT < 31 || ((android.app.AlarmManager)getSystemService(ALARM_SERVICE)).canScheduleExactAlarms(); }
+        @JavascriptInterface public void openProjectAlarmExactSettings() {
+            if (android.os.Build.VERSION.SDK_INT < 31) return;
+            runOnUiThread(() -> {
+                try {
+                    Intent settings = new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                    settings.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(settings);
+                } catch (Exception ignored) {
+                    try { startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()))); }
+                    catch (Exception ignoredAgain) { }
+                }
+            });
+        }
         @JavascriptInterface public void requestProjectAlarmNotificationPermission() { if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},REQ_PROJECT_ALARM_NOTIFICATION)); }
         @JavascriptInterface
         public void openVideoLibrary() {
