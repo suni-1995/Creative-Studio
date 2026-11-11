@@ -42,14 +42,19 @@ function budgetStatus(id){const b=items('ledgerBudgets').find(x=>x.id===id);if(!
 function savingStatus(id){const s=items('ledgerSavings').find(x=>x.id===id);if(!s)return null;const deposits=entries().filter(x=>x.type==='saving'&&x.action==='deposit'&&x.targetId===id);return {...s,total:deposits.reduce((n,x)=>n+x.amount,0),deposits}}
 function detailSummary(m){
  const cards=items('ledgerCards'),savings=items('ledgerSavings'),budgets=items('ledgerBudgets');
- let html='<div class="ledgerExtTotals"><h4>신용카드 · '+esc(m)+'</h4>';
- let overall={base:0,payment:0,balance:0};
- for(const c of cards){const x=cardStatus(c.id,m);overall.base+=x.base;overall.payment+=x.payment;overall.balance+=x.balance;html+='<div class="ledgerExtLine"><b>'+esc(c.name)+'</b><span>이번 달 '+money(x.base)+' / 입금 '+money(x.payment)+' / 미납 '+money(x.balance)+'</span></div>'}
- html+='<div class="ledgerExtLine"><b>전체 카드 합계</b><span>납부 발생 '+money(overall.base)+' · 입금 '+money(overall.payment)+' · 잔액 '+money(overall.balance)+'</span></div>';
- html+='<h4>적금</h4>';
- for(const s of savings){const x=savingStatus(s.id);const monthly=x.deposits.filter(z=>month(z.date)===m).reduce((a,z)=>a+z.amount,0);html+='<div class="ledgerExtLine"><b>'+esc(s.name)+(s.closed?' (해지)':'')+'</b><span>이번 달 '+money(monthly)+' · 누적 '+money(x.total)+'</span></div>'}
- html+='<h4>기타 사용 비용</h4>';
- for(const b of budgets){const x=budgetStatus(b.id);html+='<div class="ledgerExtLine"><b>'+esc(b.name)+'</b><span>설정 '+money(b.amount)+' · 사용 '+money(x.used)+' · '+(x.left<0?'초과 ':'잔액 ')+money(Math.abs(x.left))+'</span></div>'}
+ let html='<div class="ledgerExtTotals">';
+ const section=(title,body)=>'<section class="ledgerExtSection"><h4>'+title+'</h4><div class="ledgerExtSectionBody">'+(body||'<p class="ledgerExtEmpty">등록된 항목이 없습니다.</p>')+'</div></section>';
+ const line=(name,metrics)=>'<div class="ledgerExtLine"><b>'+esc(name)+'</b><div class="ledgerExtMetrics">'+metrics.map(([label,value])=>'<span><small>'+label+'</small><strong>'+value+'</strong></span>').join('')+'</div></div>';
+ let cardRows='',overall={base:0,payment:0,balance:0};
+ for(const c of cards){const x=cardStatus(c.id,m);overall.base+=x.base;overall.payment+=x.payment;overall.balance+=x.balance;cardRows+=line(c.name,[['이번 달',money(x.base)],['입금',money(x.payment)],['잔액',money(x.balance)]])}
+ if(cards.length)cardRows+=line('전체 카드 합계',[['납부 발생',money(overall.base)],['입금',money(overall.payment)],['잔액',money(overall.balance)]]);
+ html+=section('신용카드 · '+esc(m),cardRows);
+ let savingRows='';
+ for(const s of savings){const x=savingStatus(s.id);const monthly=x.deposits.filter(z=>month(z.date)===m).reduce((a,z)=>a+z.amount,0);savingRows+=line(s.name+(s.closed?' (해지)':''),[['이번 달',money(monthly)],['누적',money(x.total)]])}
+ html+=section('적금',savingRows);
+ let budgetRows='';
+ for(const b of budgets){const x=budgetStatus(b.id);budgetRows+=line(b.name,[['설정',money(b.amount)],['사용',money(x.used)],[x.left<0?'초과':'잔액',money(Math.abs(x.left))]])}
+ html+=section('기타 사용 비용',budgetRows);
  return html+'</div>';
 }
 function listRow(x){
@@ -149,4 +154,5 @@ trashProject=function(pid){
  const bundle=(db.trash||[]).find(t=>t.kind==='project'&&t.data?.project?.id===pid);
  if(bundle){for(const k of KEYS){bundle.data.items[k]=extras[k];db[k]=db[k].filter(x=>x.project!==pid)}persist()}
 };
+const ledgerLayoutStyle=document.createElement('style');ledgerLayoutStyle.textContent="\n/* Ledger extension: responsive form and summary layout, scoped to ledger only. */\n.ledgerExtForm{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;align-items:end}\n.ledgerExtForm .ledgerExtField{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0}\n.ledgerExtForm .ledgerExtField>span{font-size:12px;color:var(--muted);font-weight:650}\n.ledgerExtForm .ledgerExtField input,.ledgerExtForm .ledgerExtField select{width:100%!important;min-width:0;max-width:100%;box-sizing:border-box;height:48px;margin:0}\n.ledgerExtForm .ledgerExtField .appSelectButton{width:100%!important;min-width:0;max-width:100%;height:48px;box-sizing:border-box;text-align:left;margin:0}\n.ledgerExtForm>button{min-height:48px;width:100%;margin:0}\n.ledgerExtForm>button.full{grid-column:1/-1}\n.ledgerExtTotals{display:grid;gap:12px;margin:16px 0 4px;min-width:0}\n.ledgerExtSection{min-width:0;padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}\n.ledgerExtSection h4{margin:0 0 12px;font-size:14px;line-height:1.5}\n.ledgerExtSectionBody{display:grid;gap:9px}\n.ledgerExtLine{min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg,var(--card));display:grid;gap:10px}\n.ledgerExtLine>b{font-size:13px;overflow-wrap:anywhere}\n.ledgerExtMetrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}\n.ledgerExtMetrics>span{display:flex;flex-direction:column;gap:5px;min-width:0}\n.ledgerExtMetrics small{font-size:11px;color:var(--muted)}\n.ledgerExtMetrics strong{font-size:12px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}\n.ledgerExtEmpty{font-size:12px;color:var(--muted);margin:0}\n.ledgerCalendarWrap .toolbar{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:8px}\n.ledgerCalendarWrap .toolbar>b{text-align:center}\n.ledgerCalendarWrap .toolbar>button{width:42px;height:42px;min-width:0;padding:0}\n@media(max-width:640px){.ledgerExtForm{grid-template-columns:minmax(0,1fr)!important}.ledgerExtForm>button.full{grid-column:1}.ledgerExtSection{padding:12px}.ledgerExtMetrics{gap:6px}.ledgerExtMetrics strong{font-size:11px}}\n";document.head.appendChild(ledgerLayoutStyle);
 })();
