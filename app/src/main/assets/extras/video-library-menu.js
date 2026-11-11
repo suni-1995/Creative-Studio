@@ -22,7 +22,7 @@
     const button = document.createElement('button');
     button.id = 'creative-video-library-entry';
     button.type = 'button';
-    button.textContent = '▶　동영상 플레이어　›';
+    button.innerHTML = '<span>▶　동영상 플레이어</span><span aria-hidden="true">›</span>';
     button.addEventListener('click', () => window.Android.openVideoLibrary());
     if (!existing) group.appendChild(heading);
     group.appendChild(button);
