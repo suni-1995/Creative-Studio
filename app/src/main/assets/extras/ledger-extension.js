@@ -78,7 +78,7 @@ function ledgerFourTotals(rows,allocation=0){
  const budget=rows.filter(x=>x.type==='budget'&&x.action!=='deposit').reduce((n,x)=>n+(Number(x.amount)||0),0);
  const budgetDeposit=rows.filter(x=>x.type==='budget'&&x.action==='deposit').reduce((n,x)=>n+(Number(x.amount)||0),0);
  const expense=ordinary.expense+cardPayment;
- return {income:ordinary.income,expense,cardPayment,saving,budget,budgetDeposit,allocation,allocatedTotal:allocation+budgetDeposit,balance:ordinary.income-expense-saving-allocation-budgetDeposit};
+ return {income:ordinary.income,expense,cardPayment,saving,budget,budgetDeposit,allocation,allocatedTotal:allocation+budgetDeposit,budgetRemaining:allocation+budgetDeposit-budget,balance:ordinary.income-expense-saving-allocation-budgetDeposit};
 }
 ledgerSums=function(rows){return ledgerFourTotals(rows)};
 function ledgerMonthSummary(m){
@@ -87,14 +87,14 @@ function ledgerMonthSummary(m){
  return ledgerFourTotals(rows,allocations);
 }
 function ledgerMonthToDate(m,day){const rows=entries().filter(x=>month(x.date)===m&&x.date<=day);const allocation=items('ledgerBudgets').filter(b=>{const d=ledgerBudgetAllocationDate(b);return month(d)===m&&d<=day}).reduce((n,b)=>n+(Number(b.amount)||0),0);return ledgerFourTotals(rows,allocation)}
-function ledgerFourGrid(t,title){return '<div class="ledgerDayFourGroup"><h4>'+title+'</h4><div class="ledgerDayFourGrid"><div><small>수입</small><strong class="ledgerIncome">'+money(t.income)+'</strong></div><div><small>지출 (카드 입금 포함)</small><strong class="ledgerExpense">'+money(t.expense)+'</strong></div><div><small>적금 입금</small><strong class="ledgerSavingColor">'+money(t.saving)+'</strong></div><div><small>기타 비용 사용</small><strong class="ledgerBudgetColor">'+money(t.budget)+'</strong></div></div>'+(t.allocatedTotal?'<div class="ledgerDayExtra">기타 비용 배정 <strong class="ledgerBudgetColor">'+money(t.allocatedTotal)+'</strong></div>':'')+'<div class="ledgerDayBalance">잔액 <strong>'+money(t.balance)+'</strong></div></div>'}
+function ledgerFourGrid(t,title){return '<div class="ledgerDayFourGroup"><h4>'+title+'</h4><div class="ledgerDayFourGrid"><div><small>수입</small><strong class="ledgerIncome">'+money(t.income)+'</strong></div><div><small>지출 (카드 입금 포함)</small><strong class="ledgerExpense">'+money(t.expense)+'</strong></div><div><small>적금 입금</small><strong class="ledgerSavingColor">'+money(t.saving)+'</strong></div><div><small>기타 비용 사용</small><strong class="ledgerBudgetColor">'+(t.budget?'-'+money(t.budget):money(0))+'</strong></div></div>'+(t.allocatedTotal?'<div class="ledgerDayExtra">기타 비용 잔여 <strong class="ledgerBudgetColor">'+money(t.budgetRemaining)+'</strong></div>':'')+'<div class="ledgerDayBalance">잔액 <strong>'+money(t.balance)+'</strong></div></div>'}
 function ledgerSummaryFour(m){
  const t=ledgerMonthSummary(m);
  return '<div class="ledgerSummary ledgerSummaryFour">'+
  '<div class="ledgerSumCard"><span>총 수입</span><b class="ledgerIncome">'+money(t.income)+'</b></div>'+
  '<div class="ledgerSumCard"><span>총 지출</span><b class="ledgerExpense">'+money(t.expense)+'</b></div>'+
  '<div class="ledgerSumCard"><span>적금 입금</span><b class="ledgerSavingColor">'+money(t.saving)+'</b></div>'+
- '<div class="ledgerSumCard"><span>기타 비용 배정</span><b class="ledgerBudgetColor">'+money(t.allocatedTotal)+'</b></div>'+
+ '<div class="ledgerSumCard"><span>기타 비용 잔여</span><b class="ledgerBudgetColor">'+money(t.budgetRemaining)+'</b></div>'+
  '<div class="ledgerSumCard ledgerBalanceCard"><span>잔액</span><b>'+money(t.balance)+'</b></div></div>';
 }
 function inputView(x){
@@ -237,7 +237,7 @@ window.renderLedgerCalendar=function(){
   const rows=byDate.get(ds)||[],sum=ledgerFourTotals(rows,allocated.get(ds)||0);
   const mark=(cls,label,value)=>value?'<div class="money '+cls+'">'+label+money(value)+'</div>':'';
   cells+='<button class="ledgerCalDay '+(d.getMonth()!==m?'out':'')+' '+(ds===ledgerSelectedDate?'active':'')+'" onclick="ledgerSelectedDate=\''+ds+'\';renderLedgerCalendar()"><div class="num">'+d.getDate()+'</div>'+
-  mark('ledgerIncome','+',sum.income)+mark('ledgerExpense','-',sum.expense)+mark('ledgerSavingColor','적금 -',sum.saving)+mark('ledgerBudgetColor','기타 입금 ',sum.allocatedTotal)+mark('ledgerBudgetColor','기타 지출 ',sum.budget)+'</button>';
+  mark('ledgerIncome','+',sum.income)+mark('ledgerExpense','-',sum.expense)+mark('ledgerSavingColor','적금 -',sum.saving)+mark('ledgerBudgetColor','기타 입금 ',sum.allocatedTotal)+mark('ledgerBudgetColor','기타 지출 -',sum.budget)+'</button>';
  }
  const selected=byDate.get(ledgerSelectedDate)||[],ss=ledgerFourTotals(selected,allocated.get(ledgerSelectedDate)||0),cumulative=ledgerMonthToDate(month(ledgerSelectedDate),ledgerSelectedDate);
  host.innerHTML=ledgerSummaryFour(mk)+'<div class="ledgerCalendarWrap"><div class="toolbar"><button onclick="ledgerCalendarMove(-1)">‹</button><b>'+y+'년 '+(m+1)+'월</b><button onclick="ledgerCalendarMove(1)">›</button></div><div class="ledgerCalGrid">'+['일','월','화','수','목','금','토'].map(x=>'<div class="ledgerCalHead">'+x+'</div>').join('')+cells+'</div><div class="card ledgerCalendarDetail" style="margin-top:12px"><b>'+esc(ledgerSelectedDate)+'</b><div class="ledgerDayFourSummary">'+ledgerFourGrid(cumulative,'월초부터 선택일까지 누적')+ledgerFourGrid(ss,'선택일 당일 합계')+'</div><div class="ledgerDayList">'+(selected.map(listRow).join('')||'<div class="meta">기록이 없습니다.</div>')+'</div></div></div>'+detailSummary(month(ledgerSelectedDate),ledgerSelectedDate);
