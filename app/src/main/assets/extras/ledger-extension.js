@@ -40,20 +40,21 @@ function cardMonthly(cardId,until){
 function cardStatus(cardId,m){return cardMonthly(cardId,m).find(x=>x.month===m)||{month:m,base:0,payment:0,opening:0,due:0,balance:0}}
 function budgetStatus(id){const b=items('ledgerBudgets').find(x=>x.id===id);if(!b)return null;const used=entries().filter(x=>x.type==='budget'&&x.targetId===id).reduce((s,x)=>s+x.amount,0);return {...b,used,left:b.amount-used}}
 function savingStatus(id){const s=items('ledgerSavings').find(x=>x.id===id);if(!s)return null;const deposits=entries().filter(x=>x.type==='saving'&&x.action==='deposit'&&x.targetId===id);return {...s,total:deposits.reduce((n,x)=>n+x.amount,0),deposits}}
-function detailSummary(m){
+function detailSummary(m,throughDate){
+ const cutoff=throughDate||m+'-31';
  const cards=items('ledgerCards'),savings=items('ledgerSavings'),budgets=items('ledgerBudgets');
  let html='<div class="ledgerExtTotals">';
  const section=(title,body)=>'<section class="ledgerExtSection"><h4>'+title+'</h4><div class="ledgerExtSectionBody">'+(body||'<p class="ledgerExtEmpty">등록된 항목이 없습니다.</p>')+'</div></section>';
  const line=(name,metrics)=>'<div class="ledgerExtLine"><b>'+esc(name)+'</b><div class="ledgerExtMetrics">'+metrics.map(([label,value])=>'<span><small>'+label+'</small><strong>'+value+'</strong></span>').join('')+'</div></div>';
  let cardRows='',overall={base:0,payment:0,balance:0};
- for(const c of cards){const x=cardStatus(c.id,m);overall.base+=x.base;overall.payment+=x.payment;overall.balance+=x.balance;cardRows+=line(c.name,[['이번 달',money(x.base)],['입금',money(x.payment)],['잔액',money(x.balance)]])}
+ for(const c of cards){const x=cardStatus(c.id,month(cutoff));const paymentsToDate=entries().filter(z=>z.type==='card'&&z.action==='payment'&&z.targetId===c.id&&z.date<=cutoff&&month(z.date)===m).reduce((n,z)=>n+z.amount,0);const currentMonthPayments=x.payment;const balanceToDate=x.balance+currentMonthPayments-paymentsToDate;overall.base+=x.base;overall.payment+=paymentsToDate;overall.balance+=balanceToDate;cardRows+=line(c.name,[['이번 달',money(x.base)],['입금',money(paymentsToDate)],['잔액',money(balanceToDate)]])}
  if(cards.length)cardRows+=line('전체 카드 합계',[['납부 발생',money(overall.base)],['입금',money(overall.payment)],['잔액',money(overall.balance)]]);
  html+=section('신용카드 · '+esc(m),cardRows);
  let savingRows='';
- for(const s of savings){const x=savingStatus(s.id);const monthly=x.deposits.filter(z=>month(z.date)===m).reduce((a,z)=>a+z.amount,0);savingRows+=line(s.name+(s.closed?' (해지)':''),[['이번 달',money(monthly)],['누적',money(x.total)]])}
+ for(const s of savings){const x=savingStatus(s.id);const accumulated=x.deposits.filter(z=>z.date<=cutoff).reduce((n,z)=>n+z.amount,0);const monthly=x.deposits.filter(z=>month(z.date)===m&&z.date<=cutoff).reduce((a,z)=>a+z.amount,0);savingRows+=line(s.name+(s.closed?' (해지)':''),[['이번 달',money(monthly)],['누적',money(accumulated)]])}
  html+=section('적금',savingRows);
  let budgetRows='';
- for(const b of budgets){const x=budgetStatus(b.id);budgetRows+=line(b.name,[['설정',money(b.amount)],['사용',money(x.used)],[x.left<0?'초과':'잔액',money(Math.abs(x.left))]])}
+ for(const b of budgets){const x=budgetStatus(b.id);const used=entries().filter(z=>z.type==='budget'&&z.targetId===b.id&&z.date<=cutoff).reduce((n,z)=>n+z.amount,0);budgetRows+=line(b.name,[['설정',money(b.amount)],['사용',money(used)],[b.amount-used<0?'초과':'잔액',money(Math.abs(b.amount-used))]])}
  html+=section('기타 사용 비용',budgetRows);
  return html+'</div>';
 }
@@ -231,7 +232,7 @@ window.renderLedgerCalendar=function(){
   mark('ledgerIncome','+',sum.income)+mark('ledgerExpense','-',sum.expense)+mark('ledgerSavingColor','적금 -',sum.saving)+mark('ledgerBudgetColor','기타 ',sum.budget+sum.allocation)+'</button>';
  }
  const selected=byDate.get(ledgerSelectedDate)||[],ss=ledgerFourTotals(selected,allocated.get(ledgerSelectedDate)||0);
- host.innerHTML=ledgerSummaryFour(mk)+'<div class="ledgerCalendarWrap"><div class="toolbar"><button onclick="ledgerCalendarMove(-1)">‹</button><b>'+y+'년 '+(m+1)+'월</b><button onclick="ledgerCalendarMove(1)">›</button></div><div class="ledgerCalGrid">'+['일','월','화','수','목','금','토'].map(x=>'<div class="ledgerCalHead">'+x+'</div>').join('')+cells+'</div><div class="card" style="margin-top:12px"><b>'+esc(ledgerSelectedDate)+'</b><div class="ledgerDayFourSummary"><div class="ledgerDayFourGrid"><div><small>수입</small><strong class="ledgerIncome">'+money(ss.income)+'</strong></div><div><small>지출 (카드 입금 포함)</small><strong class="ledgerExpense">'+money(ss.expense)+'</strong></div><div><small>적금 입금</small><strong class="ledgerSavingColor">'+money(ss.saving)+'</strong></div><div><small>기타 비용 사용</small><strong class="ledgerBudgetColor">'+money(ss.budget)+'</strong></div></div>'+(ss.allocation?'<div class="ledgerDayExtra">기타 비용 배정 <strong class="ledgerBudgetColor">'+money(ss.allocation)+'</strong></div>':'')+'<div class="ledgerDayBalance">잔액 <strong>'+money(ss.balance)+'</strong></div></div><div class="ledgerDayList">'+(selected.map(listRow).join('')||'<div class="meta">기록이 없습니다.</div>')+'</div></div></div>'+detailSummary(mk);
+ host.innerHTML=ledgerSummaryFour(mk)+'<div class="ledgerCalendarWrap"><div class="toolbar"><button onclick="ledgerCalendarMove(-1)">‹</button><b>'+y+'년 '+(m+1)+'월</b><button onclick="ledgerCalendarMove(1)">›</button></div><div class="ledgerCalGrid">'+['일','월','화','수','목','금','토'].map(x=>'<div class="ledgerCalHead">'+x+'</div>').join('')+cells+'</div><div class="card" style="margin-top:12px"><b>'+esc(ledgerSelectedDate)+'</b><div class="ledgerDayFourSummary"><div class="ledgerDayFourGrid"><div><small>수입</small><strong class="ledgerIncome">'+money(ss.income)+'</strong></div><div><small>지출 (카드 입금 포함)</small><strong class="ledgerExpense">'+money(ss.expense)+'</strong></div><div><small>적금 입금</small><strong class="ledgerSavingColor">'+money(ss.saving)+'</strong></div><div><small>기타 비용 사용</small><strong class="ledgerBudgetColor">'+money(ss.budget)+'</strong></div></div>'+(ss.allocation?'<div class="ledgerDayExtra">기타 비용 배정 <strong class="ledgerBudgetColor">'+money(ss.allocation)+'</strong></div>':'')+'<div class="ledgerDayBalance">잔액 <strong>'+money(ss.balance)+'</strong></div></div><div class="ledgerDayList">'+(selected.map(listRow).join('')||'<div class="meta">기록이 없습니다.</div>')+'</div></div></div>'+detailSummary(mk,ledgerSelectedDate);
 };
 const oldTrash=trashProject;
 trashProject=function(pid){
