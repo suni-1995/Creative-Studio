@@ -205,7 +205,7 @@ window.ledgerOpenEntryEditor=function(id){
 window.renderLedgerDay=function(){
  const host=document.getElementById('projectRecent');if(!host||currentProjectType()!=='ledger')return;
  const date=ledgerSelectedDate||dateNow(),m=month(date),rows=entries().filter(x=>x.date===date).sort((a,b)=>(b.updated||0)-(a.updated||0)),sum=ledgerSums(rows);
- host.innerHTML=ledgerSummaryHtml(currentProjectId,m)+'<div class="toolbar"><div><h3>하루내역</h3><div class="meta">'+esc(date)+' · 수입 '+money(sum.income)+' · 지출 '+money(sum.expense)+'</div></div></div><div class="card stack ledgerExtEntryCard">'+inputView()+'</div><div class="ledgerDayList ledgerExtDayList">'+(rows.map(listRow).join('')||'<div class="empty">이 날짜의 내역이 없습니다.</div>')+'</div>'+detailSummary(m);
+ host.innerHTML=ledgerSummaryFour(m)+'<div class="toolbar"><div><h3>하루내역</h3><div class="meta">'+esc(date)+' · 수입 '+money(sum.income)+' · 지출 '+money(sum.expense)+' · 적금 '+money(sum.saving)+' · 기타 비용 사용 '+money(sum.budget)+'</div></div></div><div class="card stack ledgerExtEntryCard">'+inputView()+'</div><div class="ledgerDayList ledgerExtDayList">'+(rows.map(listRow).join('')||'<div class="empty">이 날짜의 내역이 없습니다.</div>')+'</div>'+detailSummary(m);
  bindInputs(host);
  host.querySelector('#ledgerDate')?.addEventListener('change',function(){ledgerSelectedDate=this.value;renderLedgerDay()});
 };
