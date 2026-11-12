@@ -65,7 +65,12 @@ function listRow(x){
  return '<div class="ledgerEntry" onclick="editLedgerEntry(\''+x.id+'\')"><div><b>'+esc(recordLabel(x))+' · '+esc(name)+'</b><div class="meta">'+esc(detail)+(x.note&&detail!==x.note?' · '+esc(x.note):'')+'</div></div><div class="ledgerAmount">'+(x.action==='close'?'해지':sign+' '+money(x.amount))+'</div></div>';
 }
 const oldSums=ledgerSums;
-function ledgerBudgetAllocationDate(b){const d=new Date(b.created||0);return Number.isFinite(d.getTime())&&d.getFullYear()>2000?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):''}
+function ledgerBudgetAllocationDate(b){
+ const created=new Date(b.created||0);
+ const createdDate=Number.isFinite(created.getTime())&&created.getFullYear()>2000?created.getFullYear()+'-'+String(created.getMonth()+1).padStart(2,'0')+'-'+String(created.getDate()).padStart(2,'0'):'';
+ const firstUse=entries().filter(x=>x.type==='budget'&&x.targetId===b.id&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)).map(x=>x.date).sort()[0]||'';
+ return createdDate&&firstUse?(createdDate<firstUse?createdDate:firstUse):(createdDate||firstUse);
+}
 function ledgerFourTotals(rows,allocation=0){
  const ordinary=oldSums(rows.filter(x=>x.type==='expense'||x.type==='income'));
  const cardPayment=rows.filter(x=>x.type==='card'&&x.action==='payment').reduce((n,x)=>n+(Number(x.amount)||0),0);
