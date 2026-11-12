@@ -102,7 +102,7 @@ function inputView(x){
  if(type==='card'&&action==='installment')html+=field('ledgerMonths','number','할부 개월 수',x?.months||'')+field('ledgerFirstMonth','month','첫 할부 반영 월',x?.firstMonth||month(date));
  if(type==='card'&&action==='charge')html+=field('ledgerTargetMonth','month','납부 대상 월',x?.targetMonth||month(date));
  if(!(type==='saving'&&action==='close'))html+=field('ledgerAmount','number',type==='card'&&action==='installment'?'총 결제 금액':type==='card'&&action==='payment'?'실제 입금 금액':'금액',x?.amount||'');
- html+=field('ledgerNote','text','내용',x?.note||'')+'<button class="primary full" onclick="ledgerSaveExtended(\''+(x?.id||'')+'\')">'+(x?'수정 저장':'내역 저장')+'</button>';
+ html+=field('ledgerNote','text','내용',x?.note||'')+'<button class="primary full" onclick="ledgerSaveExtended(\''+(x?.id||'')+'\',this)">'+(x?'수정 저장':'내역 저장')+'</button>';
  if(x)html+='<button class="danger full" onclick="deleteLedgerEntry(\''+x.id+'\')">삭제</button>';
  return html+'</div>';
 }
@@ -154,15 +154,20 @@ function ledgerEmptyTargetMessage(target){
  }
 }
 
-window.ledgerSaveExtended=function(id=''){
+window.ledgerSaveExtended=function(id='',button){
  const old=entries().find(x=>x.id===id);
- const root=id?document.querySelector('#modalCard .ledgerExtForm'):document.querySelector('#projectRecent .ledgerExtForm');
+ const root=button?.closest('.ledgerExtForm')||(id?document.querySelector('#modalCard .ledgerExtForm'):document.querySelector('#projectRecent .ledgerExtForm'));
  if(!root)return alert('입력창을 찾을 수 없습니다.');
- const read=(key)=>root.querySelector('#'+key)?.value||'';
+ const read=(key)=>root.querySelector('[id="'+key+'"]')?.value??'';
+
  const type=read('ledgerType'),action=read('ledgerAction'),date=read('ledgerDate');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return alert('날짜를 선택해 주세요.');
- const amount=type==='saving'&&action==='close'?0:num(read('ledgerAmount'));
- if(!(type==='saving'&&action==='close')&&!valid(amount))return alert('올바른 금액을 입력해 주세요.');
+ const amountText=String(read('ledgerAmount')).trim();
+ const amount=type==='saving'&&action==='close'?0:num(amountText);
+ if(!(type==='saving'&&action==='close')&&(!amountText||!valid(amount))){
+  root.querySelector('#ledgerAmount')?.focus();
+  return alert('금액을 확인해 주세요. 숫자로 된 1원 이상의 금액을 입력해야 저장됩니다.');
+ }
  const targetId=read('ledgerTarget');
  if(!['expense','income'].includes(type)&&!targetId)return alert('항목을 먼저 등록해 주세요.');
  const months=num(read('ledgerMonths')),firstMonth=read('ledgerFirstMonth'),targetMonth=read('ledgerTargetMonth');
