@@ -3,10 +3,12 @@
 'use strict';
 const KEYS=['ledgerCards','ledgerSavings','ledgerBudgets'];
 const oldNormalize=normalize;
-normalize=function(d){d=oldNormalize(d);for(const k of KEYS)if(!Array.isArray(d[k]))d[k]=[];return d};
+normalize=function(d){d=oldNormalize(d);for(const k of KEYS)if(!Array.isArray(d[k]))d[k]=[];for(const b of d.ledgerBudgets)b.amount=0;return d};
 for(const k of KEYS)if(!Array.isArray(db[k]))db[k]=[];
+// Legacy initial allocations are retired; account deposits are the only funding source.
+if(db.ledgerBudgets.some(b=>Number(b.amount)!==0)){for(const b of db.ledgerBudgets)b.amount=0;persist();}
 const types={expense:'지출',income:'수입',card:'신용카드',saving:'적금',budget:'기타 사용 비용'};
-const subtypes={card:{installment:'할부',charge:'지출',payment:'입금'},saving:{deposit:'입금',close:'해지'},budget:{deposit:'계좌 입금',spend:'지출'}};
+const subtypes={card:{installment:'할부',charge:'지출',payment:'입금'},saving:{deposit:'입금',interest:'이자',close:'해지'},budget:{deposit:'계좌 입금',spend:'지출'}};
 const items=(key)=>db[key].filter(x=>x.project===currentProjectId);
 const money=n=>ledgerMoney(n);
 const num=n=>Number(String(n||'').replace(/,/g,''));
@@ -38,8 +40,8 @@ function cardMonthly(cardId,until){
  return result;
 }
 function cardStatus(cardId,m){return cardMonthly(cardId,m).find(x=>x.month===m)||{month:m,base:0,payment:0,opening:0,due:0,balance:0}}
-function budgetStatus(id){const b=items('ledgerBudgets').find(x=>x.id===id);if(!b)return null;const related=entries().filter(x=>x.type==='budget'&&x.targetId===id);const used=related.filter(x=>x.action!=='deposit').reduce((s,x)=>s+x.amount,0);const deposited=related.filter(x=>x.action==='deposit').reduce((s,x)=>s+x.amount,0);return {...b,used,deposited,left:b.amount+deposited-used}}
-function savingStatus(id){const s=items('ledgerSavings').find(x=>x.id===id);if(!s)return null;const deposits=entries().filter(x=>x.type==='saving'&&x.action==='deposit'&&x.targetId===id);return {...s,total:deposits.reduce((n,x)=>n+x.amount,0),deposits}}
+function budgetStatus(id){const b=items('ledgerBudgets').find(x=>x.id===id);if(!b)return null;const related=entries().filter(x=>x.type==='budget'&&x.targetId===id);const used=related.filter(x=>x.action!=='deposit').reduce((s,x)=>s+x.amount,0);const deposited=related.filter(x=>x.action==='deposit').reduce((s,x)=>s+x.amount,0);return {...b,used,deposited,left:deposited-used}}
+function savingStatus(id){const s=items('ledgerSavings').find(x=>x.id===id);if(!s)return null;const deposits=entries().filter(x=>x.type==='saving'&&x.action==='deposit'&&x.targetId===id);const interests=entries().filter(x=>x.type==='saving'&&x.action==='interest'&&x.targetId===id);return {...s,total:deposits.reduce((n,x)=>n+x.amount,0)+interests.reduce((n,x)=>n+x.amount,0),deposits,interests}}
 function detailSummary(m,throughDate){
  const cutoff=throughDate||m+'-31';
  const cards=items('ledgerCards'),savings=items('ledgerSavings'),budgets=items('ledgerBudgets');
@@ -51,10 +53,10 @@ function detailSummary(m,throughDate){
  if(cards.length)cardRows+=line('전체 카드 합계',[['납부 발생',money(overall.base)],['입금',money(overall.payment)],['잔액',money(overall.balance)]]);
  html+=section('신용카드 · '+esc(m),cardRows);
  let savingRows='';
- for(const s of savings){const x=savingStatus(s.id);const accumulated=x.deposits.filter(z=>z.date<=cutoff).reduce((n,z)=>n+z.amount,0);const monthly=x.deposits.filter(z=>month(z.date)===m&&z.date<=cutoff).reduce((a,z)=>a+z.amount,0);savingRows+=line(s.name+(s.closed?' (해지)':''),[['이번 달',money(monthly)],['누적',money(accumulated)]])}
+ for(const s of savings){const x=savingStatus(s.id);const accumulated=x.deposits.concat(x.interests).filter(z=>z.date<=cutoff).reduce((n,z)=>n+z.amount,0);const monthly=x.deposits.filter(z=>month(z.date)===m&&z.date<=cutoff).reduce((a,z)=>a+z.amount,0);const interest=x.interests.filter(z=>month(z.date)===m&&z.date<=cutoff).reduce((a,z)=>a+z.amount,0);savingRows+=line(s.name+(s.closed?' (해지)':''),[['이번 달 입금',money(monthly)],['이번 달 이자',money(interest)],['누적 (이자 포함)',money(accumulated)]])}
  html+=section('적금',savingRows);
  let budgetRows='';
- for(const b of budgets){const x=budgetStatus(b.id);const related=entries().filter(z=>z.type==='budget'&&z.targetId===b.id&&z.date<=cutoff);const used=related.filter(z=>z.action!=='deposit').reduce((n,z)=>n+z.amount,0);const added=related.filter(z=>z.action==='deposit').reduce((n,z)=>n+z.amount,0);const left=b.amount+added-used;budgetRows+=line(b.name,[['입금',money(b.amount+added)],['지출','-'+money(used)],[left<0?'초과':'잔액',money(Math.abs(left))]])}
+ for(const b of budgets){const x=budgetStatus(b.id);const related=entries().filter(z=>z.type==='budget'&&z.targetId===b.id&&z.date<=cutoff);const used=related.filter(z=>z.action!=='deposit').reduce((n,z)=>n+z.amount,0);const added=related.filter(z=>z.action==='deposit').reduce((n,z)=>n+z.amount,0);const left=added-used;budgetRows+=line(b.name,[['입금',money(added)],['지출','-'+money(used)],[left<0?'초과':'잔액',money(Math.abs(left))]])}
  html+=section('기타 사용 비용',budgetRows);
  return html+'</div>';
 }
@@ -75,25 +77,25 @@ function ledgerFourTotals(rows,allocation=0){
  const ordinary=oldSums(rows.filter(x=>x.type==='expense'||x.type==='income'));
  const cardPayment=rows.filter(x=>x.type==='card'&&x.action==='payment').reduce((n,x)=>n+(Number(x.amount)||0),0);
  const saving=rows.filter(x=>x.type==='saving'&&x.action==='deposit').reduce((n,x)=>n+(Number(x.amount)||0),0);
+ const savingInterest=rows.filter(x=>x.type==='saving'&&x.action==='interest').reduce((n,x)=>n+(Number(x.amount)||0),0);
  const budget=rows.filter(x=>x.type==='budget'&&x.action!=='deposit').reduce((n,x)=>n+(Number(x.amount)||0),0);
  const budgetDeposit=rows.filter(x=>x.type==='budget'&&x.action==='deposit').reduce((n,x)=>n+(Number(x.amount)||0),0);
  const expense=ordinary.expense+cardPayment;
- return {income:ordinary.income,expense,cardPayment,saving,budget,budgetDeposit,allocation,allocatedTotal:allocation+budgetDeposit,budgetRemaining:allocation+budgetDeposit-budget,balance:ordinary.income-expense-saving-allocation-budgetDeposit};
+ return {income:ordinary.income,expense,cardPayment,saving,savingInterest,savingTotal:saving+savingInterest,budget,budgetDeposit,allocation:0,allocatedTotal:budgetDeposit,budgetRemaining:budgetDeposit-budget,balance:ordinary.income-expense-saving-budgetDeposit};
 }
 ledgerSums=function(rows){return ledgerFourTotals(rows)};
 function ledgerMonthSummary(m){
  const rows=entries().filter(x=>month(x.date)===m);
- const allocations=items('ledgerBudgets').filter(b=>month(ledgerBudgetAllocationDate(b))===m).reduce((n,b)=>n+(Number(b.amount)||0),0);
- return ledgerFourTotals(rows,allocations);
+ return ledgerFourTotals(rows);
 }
-function ledgerMonthToDate(m,day){const rows=entries().filter(x=>month(x.date)===m&&x.date<=day);const allocation=items('ledgerBudgets').filter(b=>{const d=ledgerBudgetAllocationDate(b);return month(d)===m&&d<=day}).reduce((n,b)=>n+(Number(b.amount)||0),0);return ledgerFourTotals(rows,allocation)}
-function ledgerFourGrid(t,title){return '<div class="ledgerDayFourGroup"><h4>'+title+'</h4><div class="ledgerDayFourGrid"><div><small>수입</small><strong class="ledgerIncome">'+money(t.income)+'</strong></div><div><small>지출 (카드 입금 포함)</small><strong class="ledgerExpense">'+money(t.expense)+'</strong></div><div><small>적금 입금</small><strong class="ledgerSavingColor">'+money(t.saving)+'</strong></div><div><small>기타 비용 사용</small><strong class="ledgerBudgetColor">'+(t.budget?'-'+money(t.budget):money(0))+'</strong></div></div>'+(t.allocatedTotal?'<div class="ledgerDayExtra">기타 비용 잔여 <strong class="ledgerBudgetColor">'+money(t.budgetRemaining)+'</strong></div>':'')+'<div class="ledgerDayBalance">잔액 <strong>'+money(t.balance)+'</strong></div></div>'}
+function ledgerMonthToDate(m,day){const rows=entries().filter(x=>month(x.date)===m&&x.date<=day);return ledgerFourTotals(rows)}
+function ledgerFourGrid(t,title){return '<div class="ledgerDayFourGroup"><h4>'+title+'</h4><div class="ledgerDayFourGrid"><div><small>수입</small><strong class="ledgerIncome">'+money(t.income)+'</strong></div><div><small>지출 (카드 입금 포함)</small><strong class="ledgerExpense">'+money(t.expense)+'</strong></div><div><small>적금 입금</small><strong class="ledgerSavingColor">'+money(t.savingTotal)+'</strong></div><div><small>기타 비용 사용</small><strong class="ledgerBudgetColor">'+(t.budget?'-'+money(t.budget):money(0))+'</strong></div></div>'+(t.allocatedTotal?'<div class="ledgerDayExtra">기타 비용 잔여 <strong class="ledgerBudgetColor">'+money(t.budgetRemaining)+'</strong></div>':'')+'<div class="ledgerDayBalance">잔액 <strong>'+money(t.balance)+'</strong></div></div>'}
 function ledgerSummaryFour(m){
  const t=ledgerMonthSummary(m);
  return '<div class="ledgerSummary ledgerSummaryFour">'+
  '<div class="ledgerSumCard"><span>총 수입</span><b class="ledgerIncome">'+money(t.income)+'</b></div>'+
  '<div class="ledgerSumCard"><span>총 지출</span><b class="ledgerExpense">'+money(t.expense)+'</b></div>'+
- '<div class="ledgerSumCard"><span>적금 입금</span><b class="ledgerSavingColor">'+money(t.saving)+'</b></div>'+
+ '<div class="ledgerSumCard"><span>적금 입금</span><b class="ledgerSavingColor">'+money(t.savingTotal)+'</b></div>'+
  '<div class="ledgerSumCard"><span>기타 비용 잔여</span><b class="ledgerBudgetColor">'+money(t.budgetRemaining)+'</b></div>'+
  '<div class="ledgerSumCard ledgerBalanceCard"><span>잔액</span><b>'+money(t.balance)+'</b></div></div>';
 }
@@ -106,7 +108,7 @@ function inputView(x){
  html+='<label class="ledgerExtField"><span>분류</span>'+sel('ledgerCategory',(type==='income'?LEDGER_INCOME:LEDGER_EXPENSE).concat(items('ledgerCategories').filter(z=>z.type===type).map(z=>z.name)).filter((v,i,a)=>a.indexOf(v)===i).map(name=>({id:name,name})),x?.category||'기타')+'</label>';
  }else{
  const key=type==='card'?'ledgerCards':type==='saving'?'ledgerSavings':'ledgerBudgets';
- html+='<label class="ledgerExtField"><span>'+(type==='card'?'카드':type==='saving'?'적금':'비용 항목')+'</span>'+sel('ledgerTarget',items(key),x?.targetId)+'</label><button type="button" onclick="ledgerAddTarget(\''+type+'\')">+ 항목 등록</button>'+(type==='budget'?'<button type="button" onclick="ledgerManageBudget()">기타 비용 초기 금액 관리</button>':'');
+ html+='<label class="ledgerExtField"><span>'+(type==='card'?'카드':type==='saving'?'적금':'비용 항목')+'</span>'+sel('ledgerTarget',items(key),x?.targetId)+'</label><button type="button" onclick="ledgerAddTarget(\''+type+'\')">+ 항목 등록</button>';
  }
  if(type==='card'&&action==='installment')html+=field('ledgerMonths','number','할부 개월 수',x?.months||'')+field('ledgerFirstMonth','month','첫 할부 반영 월',x?.firstMonth||month(date));
  if(type==='card'&&action==='charge')html+=field('ledgerTargetMonth','month','납부 대상 월',x?.targetMonth||month(date));
@@ -133,16 +135,16 @@ window.ledgerAddTarget=function(type){
  const overlay=document.createElement('div');
  overlay.id='ledgerRegistrationOverlay';
  overlay.className='ledgerRegistrationOverlay';
- overlay.innerHTML='<div class="ledgerRegistrationDialog" role="dialog" aria-modal="true" aria-label="'+title+' 항목 등록"><h3>'+title+' 항목 등록</h3><label>이름<input id="ledgerRegisterName" type="text" autocomplete="off" placeholder="항목 이름"></label>'+(type==='budget'?'<label>초기 계좌 입금 금액 (원)<input id="ledgerRegisterAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="금액 입력"></label>':'')+'<p id="ledgerRegisterError" class="ledgerRegisterError" aria-live="polite"></p><div class="ledgerRegistrationActions"><button type="button" onclick="ledgerRegistrationClose()">취소</button><button type="button" class="primary" id="ledgerRegisterConfirm">등록</button></div></div>';
+ overlay.innerHTML='<div class="ledgerRegistrationDialog" role="dialog" aria-modal="true" aria-label="'+title+' 항목 등록"><h3>'+title+' 항목 등록</h3><label>이름<input id="ledgerRegisterName" type="text" autocomplete="off" placeholder="항목 이름"></label>' +'<p id="ledgerRegisterError" class="ledgerRegisterError" aria-live="polite"></p><div class="ledgerRegistrationActions"><button type="button" onclick="ledgerRegistrationClose()">취소</button><button type="button" class="primary" id="ledgerRegisterConfirm">등록</button></div></div>';
  overlay.addEventListener('click',e=>{if(e.target===overlay)ledgerRegistrationClose()});
  document.body.appendChild(overlay);
  overlay.querySelector('#ledgerRegisterConfirm').onclick=()=>{
   const name=overlay.querySelector('#ledgerRegisterName').value.trim();
-  const amount=type==='budget'?num(overlay.querySelector('#ledgerRegisterAmount').value):0;
+  const amount=0;
   const error=overlay.querySelector('#ledgerRegisterError');
   if(!name){error.textContent='항목 이름을 입력해 주세요.';return}
   if(items(key).some(x=>x.name===name)){error.textContent='같은 이름이 이미 등록되어 있습니다.';return}
-  if(type==='budget'&&!valid(amount)){error.textContent='올바른 설정 금액을 입력해 주세요.';return}
+  
   const item={id:uid(),project:currentProjectId,name,amount,closed:false,created:Date.now()};
   db[key].push(item);persist();
   const target=document.getElementById('ledgerTarget');
@@ -151,24 +153,6 @@ window.ledgerAddTarget=function(type){
   renderLedgerCalendar();
  };
  overlay.querySelector('#ledgerRegisterName').focus();
-};
-window.ledgerManageBudget=function(){
- ledgerRegistrationClose();
- const budgets=items('ledgerBudgets');
- const overlay=document.createElement('div');
- overlay.id='ledgerRegistrationOverlay';overlay.className='ledgerRegistrationOverlay';
- overlay.innerHTML='<div class="ledgerRegistrationDialog" role="dialog" aria-modal="true"><h3>기타 비용 초기 금액 관리</h3><p class="meta">항목 등록 때 입력한 초기 금액은 하루내역과 별도로 저장됩니다. 금액을 0원으로 변경하면 초기 배정액이 계산에서 제외됩니다. 입금·지출 내역은 유지됩니다.</p>'+
- budgets.map(b=>'<div class="ledgerBudgetManageRow"><label>'+esc(b.name)+' · 초기 배정액<input type="number" min="0" step="1" inputmode="numeric" data-budget-id="'+esc(b.id)+'" value="'+(Number(b.amount)||0)+'"></label></div>').join('')+
- (budgets.length?'':'<p class="meta">등록된 항목이 없습니다.</p>')+
- '<p id="ledgerRegisterError" class="ledgerRegisterError" aria-live="polite"></p><div class="ledgerRegistrationActions"><button type="button" onclick="ledgerRegistrationClose()">취소</button><button type="button" class="primary" id="ledgerBudgetManageSave">저장</button></div></div>';
- overlay.addEventListener('click',e=>{if(e.target===overlay)ledgerRegistrationClose()});
- document.body.appendChild(overlay);
- overlay.querySelector('#ledgerBudgetManageSave').onclick=()=>{
-  const edits=[...overlay.querySelectorAll('input[data-budget-id]')].map(el=>({id:el.dataset.budgetId,amount:num(el.value),raw:el.value}));
-  if(edits.some(x=>x.raw.trim()===''||!Number.isSafeInteger(x.amount)||x.amount<0)){overlay.querySelector('#ledgerRegisterError').textContent='0원 이상의 올바른 금액을 입력해 주세요.';return}
-  for(const x of edits){const b=budgets.find(b=>b.id===x.id);if(b)b.amount=x.amount}
-  persist();ledgerRegistrationClose();renderLedgerDay();renderLedgerCalendar();
- };
 };
 function ledgerEmptyTargetMessage(target){
  if(!target)return;
@@ -200,7 +184,7 @@ window.ledgerSaveExtended=function(id='',button){
  const months=num(read('ledgerMonths')),firstMonth=read('ledgerFirstMonth'),targetMonth=read('ledgerTargetMonth');
  if(type==='card'&&action==='installment'&&(!Number.isSafeInteger(months)||months<1||months>600||!firstMonth))return alert('할부 개월 수와 첫 반영 월을 확인해 주세요.');
  if(type==='card'&&action==='charge'&&!targetMonth)return alert('납부 대상 월을 선택해 주세요.');
- if(type==='saving'&&action==='deposit'&&items('ledgerSavings').find(z=>z.id===targetId)?.closed)return alert('해지된 적금에는 입금할 수 없습니다.');
+ if(type==='saving'&&(action==='deposit'||action==='interest')&&items('ledgerSavings').find(z=>z.id===targetId)?.closed)return alert('해지된 적금에는 입금할 수 없습니다.');
  if(type==='saving'&&action==='close'&&items('ledgerSavings').find(z=>z.id===targetId)?.closed&&!old)return alert('이미 해지된 적금입니다.');
  const obj={id:id||uid(),project:currentProjectId,type,action,date,amount,targetId,months:type==='card'&&action==='installment'?months:undefined,firstMonth:type==='card'&&action==='installment'?firstMonth:undefined,targetMonth:type==='card'&&action==='charge'?targetMonth:undefined,category:read('ledgerCategory')||'기타',note:read('ledgerNote').trim(),created:old?.created||Date.now(),updated:Date.now()};
  if(old)Object.assign(old,obj);else db.ledgerEntries.unshift(obj);
@@ -247,7 +231,7 @@ window.renderLedgerCalendar=function(){
  const host=document.getElementById('projectCalendar');if(!host||currentProjectType()!=='ledger')return;
  const y=ledgerCalendarCursor.getFullYear(),m=ledgerCalendarCursor.getMonth(),mk=y+'-'+String(m+1).padStart(2,'0'),first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),byDate=new Map(),allocated=new Map();
  for(const x of entries()){if(!byDate.has(x.date))byDate.set(x.date,[]);byDate.get(x.date).push(x)}
- for(const b of items('ledgerBudgets')){const date=ledgerBudgetAllocationDate(b);if(date)allocated.set(date,(allocated.get(date)||0)+(Number(b.amount)||0))}
+ 
  let cells='';
  for(let i=0;i<42;i++){
   const d=new Date(start);d.setDate(start.getDate()+i);
@@ -255,7 +239,7 @@ window.renderLedgerCalendar=function(){
   const rows=byDate.get(ds)||[],sum=ledgerFourTotals(rows,allocated.get(ds)||0);
   const mark=(cls,label,value)=>value?'<div class="money '+cls+'">'+label+money(value)+'</div>':'';
   cells+='<button class="ledgerCalDay '+(d.getMonth()!==m?'out':'')+' '+(ds===ledgerSelectedDate?'active':'')+'" onclick="ledgerSelectedDate=\''+ds+'\';renderLedgerCalendar()"><div class="num">'+d.getDate()+'</div>'+
-  mark('ledgerIncome','+',sum.income)+mark('ledgerExpense','-',sum.expense)+mark('ledgerSavingColor','적금 -',sum.saving)+mark('ledgerBudgetColor','기타 입금 ',sum.allocatedTotal)+mark('ledgerBudgetColor','기타 지출 -',sum.budget)+'</button>';
+  mark('ledgerIncome','+',sum.income)+mark('ledgerExpense','-',sum.expense)+mark('ledgerSavingColor','적금 -',sum.saving)+mark('ledgerSavingColor','이자 +',sum.savingInterest)+mark('ledgerBudgetColor','기타 입금 ',sum.allocatedTotal)+mark('ledgerBudgetColor','기타 지출 -',sum.budget)+'</button>';
  }
  const selected=byDate.get(ledgerSelectedDate)||[],ss=ledgerFourTotals(selected,allocated.get(ledgerSelectedDate)||0),cumulative=ledgerMonthToDate(month(ledgerSelectedDate),ledgerSelectedDate);
  host.innerHTML=ledgerSummaryFour(mk)+'<div class="ledgerCalendarWrap"><div class="toolbar"><button onclick="ledgerCalendarMove(-1)">‹</button><b>'+y+'년 '+(m+1)+'월</b><button onclick="ledgerCalendarMove(1)">›</button></div><div class="ledgerCalGrid">'+['일','월','화','수','목','금','토'].map(x=>'<div class="ledgerCalHead">'+x+'</div>').join('')+cells+'</div><div class="card ledgerCalendarDetail" style="margin-top:12px"><b>'+esc(ledgerSelectedDate)+'</b><div class="ledgerDayFourSummary">'+ledgerFourGrid(cumulative,'월초부터 선택일까지 누적')+ledgerFourGrid(ss,'선택일 당일 합계')+'</div><div class="ledgerDayList">'+(selected.map(listRow).join('')||'<div class="meta">기록이 없습니다.</div>')+'</div></div></div>'+detailSummary(month(ledgerSelectedDate),ledgerSelectedDate);
