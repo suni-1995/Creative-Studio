@@ -58,12 +58,13 @@ function detailSummary(m,throughDate){
   const today=dateRows.filter(z=>z.targetId===c.id);
   const todayCharge=today.filter(z=>z.action==='charge'||z.action==='installment').reduce((n,z)=>n+z.amount,0);
   const todayPaid=today.filter(z=>z.action==='payment').reduce((n,z)=>n+z.amount,0);
+  const todaySpending=today.filter(z=>z.action==='charge'||z.action==='installment').reduce((n,z)=>n+z.amount,0);
   const installments=entries().filter(z=>z.type==='card'&&z.action==='installment'&&z.targetId===c.id&&z.date<=cutoff);
   const installmentTotal=installments.reduce((n,z)=>n+z.amount,0);
   const installmentMonth=installments.reduce((n,z)=>n+parts(z).filter(p=>p.month===m).reduce((a,p)=>a+p.amount,0),0);
   const installmentRemaining=installments.reduce((n,z)=>n+parts(z).filter(p=>p.month>m).reduce((a,p)=>a+p.amount,0),0);
   const metrics=line(c.name,[['이번 달',money(x.base)],['입금',money(paymentsToDate)],['잔액',money(balanceToDate)]]);
-  const todayMetrics=line('오늘 합산',[['오늘 합산 금액',money(todayCharge)],['지출액',money(todayPaid)],['잔액',money(todayCharge-todayPaid)]]);
+  const todayMetrics=line('오늘 합산',[['오늘 합산 금액',money(todayCharge)],['지출액',money(todaySpending)],['잔액',money(todayCharge-todayPaid)]]);
   const installmentMetrics=installments.length?line('할부',[['할부 전체 금액',money(installmentTotal)],['이번 달 할부금',money(installmentMonth)],['남은 금액',money(installmentRemaining)]]):'';
   cardRows+=metrics+'<div class="ledgerCardSubSummary">'+todayMetrics+installmentMetrics+'</div>';
  }
@@ -240,7 +241,7 @@ window.ledgerOpenEntryEditor=function(id){
 window.renderLedgerDay=function(){
  const host=document.getElementById('projectRecent');if(!host||currentProjectType()!=='ledger')return;
  const date=ledgerSelectedDate||dateNow(),m=month(date),rows=entries().filter(x=>x.date===date).sort((a,b)=>(b.updated||0)-(a.updated||0)),sum=ledgerSums(rows);
- host.innerHTML=ledgerSummaryFour(m)+'<div class="toolbar"><div><h3>하루내역</h3><div class="meta">'+esc(date)+' · 수입 '+money(sum.income)+' · 지출 '+money(sum.expense)+' · 적금 '+money(sum.saving)+' · 기타 비용 사용 '+money(sum.budget)+'</div></div></div><div class="card stack ledgerExtEntryCard">'+inputView()+'</div><div class="ledgerDayList ledgerExtDayList">'+(rows.map(listRow).join('')||'<div class="empty">이 날짜의 내역이 없습니다.</div>')+'</div>'+detailSummary(m);
+ host.innerHTML=ledgerSummaryFour(m)+'<div class="toolbar"><div><h3>하루내역</h3><div class="meta">'+esc(date)+' · 수입 '+money(sum.income)+' · 지출 '+money(sum.expense)+' · 적금 '+money(sum.saving)+' · 기타 비용 사용 '+money(sum.budget)+'</div></div></div><div class="card stack ledgerExtEntryCard">'+inputView()+'</div><div class="ledgerDayList ledgerExtDayList">'+(rows.map(listRow).join('')||'<div class="empty">이 날짜의 내역이 없습니다.</div>')+'</div>'+detailSummary(m,date);
  bindInputs(host);
  host.querySelector('#ledgerDate')?.addEventListener('change',function(){ledgerSelectedDate=this.value;renderLedgerDay()});
 };
