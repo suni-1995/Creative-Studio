@@ -23,6 +23,8 @@ import java.util.UUID;
 /** Isolated local video library. No project data or ZIP backup integration. */
 public class VideoLibraryActivity extends Activity {
     private static final int PICK_VIDEO = 8401;
+    private static final int EXPORT_VIDEO = 8402;
+    private String pendingExportId;
     private static final String PREFS = "video_library_only";
     private static final String KEY = "videos";
     private final Object lock = new Object();
@@ -144,6 +146,12 @@ public class VideoLibraryActivity extends Activity {
         super.onActivityResult(request, result, data);
         if (request == PICK_VIDEO && result == RESULT_OK && data != null && data.getData() != null) {
             importVideo(data.getData());
+        } else if (request == EXPORT_VIDEO) {
+            String id = pendingExportId;
+            pendingExportId = null;
+            if (result == RESULT_OK && data != null && data.getData() != null && id != null) {
+                exportVideo(id, data.getData());
+            }
         }
     }
 
@@ -302,9 +310,63 @@ public class VideoLibraryActivity extends Activity {
                 PopupMenu popup = new PopupMenu(this, more);
                 popup.getMenu().add("이름 수정").setOnMenuItemClickListener(menu -> { rename(id); return true; });
                 popup.getMenu().add("삭제").setOnMenuItemClickListener(menu -> { confirmDelete(id); return true; });
+                popup.getMenu().add("다운로드").setOnMenuItemClickListener(menu -> { chooseExportDestination(id); return true; });
                 popup.show();
             });
         }
+    }
+
+
+    private void chooseExportDestination(String id) {
+        int i = indexOf(id);
+        if (i < 0) { toast("영상을 찾을 수 없습니다."); return; }
+        JSONObject item = videos.optJSONObject(i);
+        if (item == null || safeVideoFile(id, item.optString("file")) == null) {
+            toast("영상 파일 정보가 올바르지 않습니다."); return;
+        }
+        String title = item.optString("title", "동영상").trim();
+        if (title.isEmpty()) title = "동영상";
+        if (!title.toLowerCase(java.util.Locale.ROOT).matches(".*\\.(mp4|mkv|avi|mov|webm|m4v|3gp)$")) title += ".mp4";
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("video/*");
+        intent.putExtra(Intent.EXTRA_TITLE, title);
+        pendingExportId = id;
+        try { startActivityForResult(intent, EXPORT_VIDEO); }
+        catch (Exception e) { pendingExportId = null; toast("저장 위치 선택기를 열 수 없습니다."); }
+    }
+
+    private void exportVideo(String id, Uri destination) {
+        int i = indexOf(id);
+        if (i < 0) { toast("영상을 찾을 수 없습니다."); return; }
+        JSONObject item = videos.optJSONObject(i);
+        if (item == null) return;
+        File source = safeVideoFile(id, item.optString("file"));
+        if (source == null || !source.isFile()) { toast("저장된 영상 파일이 없습니다."); return; }
+        toast("영상 다운로드를 시작합니다.");
+        new Thread(() -> {
+            boolean success = false;
+            String error = "";
+            try (InputStream in = new FileInputStream(source);
+                 OutputStream out = getContentResolver().openOutputStream(destination, "w")) {
+                if (out == null) throw new IOException("저장 위치에 쓸 수 없습니다.");
+                byte[] buffer = new byte[65536];
+                int read;
+                long total = 0;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                    total += read;
+                }
+                out.flush();
+                if (total != source.length()) throw new IOException("복사 크기가 일치하지 않습니다.");
+                success = true;
+            } catch (Exception e) {
+                error = e.getMessage() == null ? "파일 저장 오류" : e.getMessage();
+            }
+            final boolean saved = success;
+            final String message = saved ? "영상 다운로드가 완료됐습니다." : "다운로드 실패: " + error;
+            runOnUiThread(() -> toast(message));
+        }).start();
     }
 
     private int indexOf(String id) {
