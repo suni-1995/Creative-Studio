@@ -1,0 +1,6 @@
+/* SNS composer position fix — mobile bottom navigation clearance */
+@media (max-width: 640px) {
+  .snsComposer { bottom: calc(var(--studioNavClearance, 100px) + 12px) !important; }
+  body.snsKeyboardActive .snsComposer,
+  .snsProjectShell.snsKeyboardOpen .snsComposer { bottom: 6px !important; }
+}
