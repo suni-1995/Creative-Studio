@@ -128,7 +128,9 @@ window.saveDiarySchedule=function(id){
 window.diaryAlarmPermissionCheck=function(){if(!native())return;if(Android.hasProjectAlarmNotificationPermission&&!Android.hasProjectAlarmNotificationPermission()){Android.requestProjectAlarmNotificationPermission();alert('알림 권한을 허용해야 알림이 표시됩니다.')}if(Android.isProjectAlarmExact&&!Android.isProjectAlarmExact()&&confirm('정확한 알람을 위해 알람 및 리마인더 권한 설정으로 이동할까요?'))Android.openProjectAlarmExactSettings()};
 window.previewDiarySchedule=function(id){
  const x=schedules().find(s=>s.id===id);if(!x)return;
- openModal('<div class="stack"><h2>'+esc(x.title)+'</h2><div class="meta">'+esc(x.date+' '+x.time+' · '+x.category)+'</div><div class="diaryRecordBody">'+esc(x.body||'')+'</div><div>'+esc(x.place||'')+'</div>'+(x.link?'<a href="'+esc(x.link)+'" target="_blank" rel="noopener">링크 열기</a>':'')+'<div class="right"><button class="danger" onclick="deleteDiarySchedule(\''+x.id+'\')">삭제</button><button onclick="closeModal()">닫기</button><button class="primary" onclick="editDiarySchedule(\''+x.id+'\')">편집</button></div></div>');
+ const link=x.link?(/^[a-z]+:\/\//i.test(x.link)?x.link:'https://'+x.link):'';
+ const safe=/^https?:\/\//i.test(link)?link:'';
+ openModal('<div class="stack"><h2>'+esc(x.title)+'</h2><div class="diaryScheduleDetails"><div><b>날짜</b> '+esc(x.date)+'</div><div><b>시간</b> '+esc(x.time)+'</div><div><b>분류</b> '+esc(x.category)+'</div><div><b>내용</b><div class="diaryRecordBody">'+esc(x.body||'없음')+'</div></div><div><b>장소</b> '+esc(x.place||'없음')+'</div><div><b>링크</b> '+(safe?'<a href="'+esc(safe)+'" target="_blank" rel="noopener noreferrer">'+esc(x.link)+'</a>':'없음')+'</div></div><div class="right"><button class="danger" onclick="deleteDiarySchedule(\''+x.id+'\')">삭제</button><button onclick="closeModal()">닫기</button><button class="primary" onclick="editDiarySchedule(\''+x.id+'\')">편집</button></div></div>');
 };
 window.deleteDiarySchedule=function(id){const x=schedules().find(s=>s.id===id);if(!x||!confirm('스케줄을 삭제하시겠습니까?'))return;unalarm(x);db.diarySchedules=db.diarySchedules.filter(s=>s.id!==id);closeModal();refresh()};
 const oldImport=importData;
