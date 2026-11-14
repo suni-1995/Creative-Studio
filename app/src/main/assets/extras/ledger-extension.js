@@ -278,6 +278,7 @@ window.ledgerCalculatorChooseDate=function(value){
  ledgerCalculatorDate=value;
  const list=document.getElementById('ledgerCalculatorHistory');
  if(list)list.innerHTML=ledgerCalculatorHistory(value);
+ const totals=document.getElementById('ledgerCalculatorTotals');if(totals)totals.innerHTML=detailSummary(month(value),value);
 };
 function ledgerCalculatorHistory(date){
  const rows=entries().filter(x=>x.date===date).sort((a,b)=>(b.updated||0)-(a.updated||0));
@@ -301,10 +302,13 @@ window.renderLedgerCalculator=function(){
  if(!ledgerCalculatorDate)ledgerCalculatorDate=ledgerSelectedDate||dateNow();
  host.innerHTML='<div class="toolbar"><div><h3 style="margin:0">계산기</h3><div class="meta">계산 결과를 가계부 항목으로 기록할 수 있습니다.</div></div></div>'+
  '<div id="ledgerCalcDisplay" class="ledgerCalcDisplay">'+esc(ledgerCalcExpr||'0')+'</div>'+
- '<div class="ledgerCalcKeys" style="margin-top:10px">'+['AC','BS','%','÷','7','8','9','×','4','5','6','-','1','2','3','+','0','00','.','='].map(k=>'<button '+(k==='='?'class="primary"':'')+' onclick="ledgerCalcPress(\''+k+'\')">'+(k==='BS'?'⌫':k)+'</button>').join('')+'</div>'+
- '<button class="primary full" style="margin-top:10px" type="button" onclick="ledgerCalculatorRecord()">기록하기</button>'+
- '<div class="card stack ledgerCalculatorHistoryCard" style="margin-top:16px"><label class="ledgerExtField"><span>날짜별 내역</span><input type="date" id="ledgerCalculatorDate" value="'+esc(ledgerCalculatorDate)+'" onchange="ledgerCalculatorChooseDate(this.value)"></label><div id="ledgerCalculatorHistory" class="ledgerDayList">'+ledgerCalculatorHistory(ledgerCalculatorDate)+'</div></div>';
+ '<div class="ledgerCalcKeys ledgerCalcKeysEnhanced" style="margin-top:10px">'+['AC','BS','%','÷','7','8','9','×','4','5','6','-','1','2','3','+','0','00','.','='].map(k=>'<button '+(k==='='?'class="primary"':(['AC','BS','%','÷','×','-','+'].includes(k)?'class="ledgerCalcOperator"':''))+' onclick="ledgerCalcPress(\''+k+'\')">'+(k==='BS'?'⌫':k)+'</button>').join('')+'</div>'+
+ '<button class="primary ledgerCalcRecordButton" type="button" onclick="ledgerCalculatorRecord()">기록하기</button>'+
+ '<div class="card stack ledgerCalculatorHistoryCard" style="margin-top:16px"><label class="ledgerExtField"><span>날짜별 내역</span><input type="date" id="ledgerCalculatorDate" value="'+esc(ledgerCalculatorDate)+'" onchange="ledgerCalculatorChooseDate(this.value)"></label><div id="ledgerCalculatorHistory" class="ledgerDayList">'+ledgerCalculatorHistory(ledgerCalculatorDate)+'</div></div>'+'<div id="ledgerCalculatorTotals">'+detailSummary(month(ledgerCalculatorDate),ledgerCalculatorDate)+'</div>';
 };
+const ledgerCalculatorStyle=document.createElement('style');
+ledgerCalculatorStyle.textContent='.ledgerCalcRecordButton{display:block!important;width:100%!important;min-height:72px!important;margin-top:10px!important;text-align:center!important}.ledgerCalcKeysEnhanced .ledgerCalcOperator{background:color-mix(in srgb,var(--theme,#5d5870) 30%,var(--card,#fff) 70%)!important;color:var(--ink,#242328)!important;border:1px solid color-mix(in srgb,var(--theme,#5d5870) 40%,transparent)!important}#ledgerCalculatorTotals{margin-top:16px}';
+document.head.appendChild(ledgerCalculatorStyle);
 const ledgerDetailAccordionStyle=document.createElement('style');
 ledgerDetailAccordionStyle.textContent='.ledgerExtSection>summary{cursor:pointer;list-style:none;font-weight:600;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}.ledgerExtSection>summary::-webkit-details-marker{display:none}.ledgerExtSection>summary:after{content:"⌄";font-size:18px;opacity:.75}.ledgerExtSection[open]>summary:after{content:"⌃"}.ledgerCardSubSummary{margin:0 0 12px 0;padding:0 0 0 12px;border-left:2px solid var(--line,rgba(160,160,160,.25))}.ledgerCardSubSummary .ledgerExtLine{margin-top:8px}.ledgerExtSection .ledgerExtSectionBody{padding-top:8px}';
 document.head.appendChild(ledgerDetailAccordionStyle);
