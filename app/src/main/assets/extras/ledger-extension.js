@@ -137,8 +137,8 @@ function inputView(x){
 }
 function bindInputs(host,x){
  const read=(key)=>host.querySelector('.ledgerExtForm #'+key)?.value||'';
- host.querySelector('#ledgerType')?.addEventListener('change',()=>{const t=read('ledgerType');const a=t==='card'?'installment':t==='saving'?'deposit':t==='budget'?'spend':'';const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:t,action:a,date:read('ledgerDate')});bindInputs(host)});
- host.querySelector('#ledgerAction')?.addEventListener('change',()=>{const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:read('ledgerType'),action:read('ledgerAction'),date:read('ledgerDate'),targetId:read('ledgerTarget')});bindInputs(host)});
+ host.querySelector('#ledgerType')?.addEventListener('change',()=>{const t=read('ledgerType');const a=t==='card'?'installment':t==='saving'?'deposit':t==='budget'?'spend':'';const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:t,action:a,date:read('ledgerDate'),amount:read('ledgerAmount'),note:read('ledgerNote')});bindInputs(host)});
+ host.querySelector('#ledgerAction')?.addEventListener('change',()=>{const node=host.querySelector('.ledgerExtForm');node.outerHTML=inputView({type:read('ledgerType'),action:read('ledgerAction'),date:read('ledgerDate'),targetId:read('ledgerTarget'),amount:read('ledgerAmount'),note:read('ledgerNote')});bindInputs(host)});
  enhanceAllSelects(host);
  ledgerEmptyTargetMessage(host.querySelector('#ledgerTarget'));
 }
