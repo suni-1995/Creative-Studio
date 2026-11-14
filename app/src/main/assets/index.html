@@ -12671,6 +12671,21 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
   if(!Array.isArray(db.socialPosts))db.socialPosts=[];
   if(!Array.isArray(db.socialThreads))db.socialThreads=[];
   let pendingQuote=null, pendingThreadLink=null, pendingDraft='', currentSnsThreadId='';
+  const snsDraftKey=(pid,tid)=>'creativeStudio:snsDraft:'+pid+':'+tid;
+  function storeSnsDraft(pid=currentProjectId,tid=currentSnsThreadId,text=pendingDraft){
+    if(!pid||!tid)return;
+    try{const key=snsDraftKey(pid,tid);if(text)localStorage.setItem(key,text);else localStorage.removeItem(key)}catch(_){}
+  }
+  function readSnsDraft(pid=currentProjectId,tid=currentSnsThreadId){
+    try{return localStorage.getItem(snsDraftKey(pid,tid))||''}catch(_){return ''}
+  }
+  function captureSnsDraft(){
+    const ta=document.getElementById('snsComposerText');
+    if(ta){pendingDraft=ta.value;storeSnsDraft()}
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')captureSnsDraft()});
+  window.addEventListener('pagehide',captureSnsDraft);
+
   const quoteKinds=['settings','characters','relations','stories','serials'];
   const quoteKindLabel=k=>({settings:'설정',characters:'캐릭터',relations:'관계도',stories:'썰 / 장문',serials:'연재본'}[k]||k);
   const quoteTitle=(k,x)=>k==='characters'?(x?.name||'이름 없음'):(x?.title||x?.episode||'제목 없음');
@@ -12765,6 +12780,7 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
   const _closeProject=closeProject;
   closeProject=function(){
     const wasSns=currentProjectType()===SNS;
+    captureSnsDraft();
     const r=_closeProject();
     currentSnsThreadId='';pendingThreadLink=null;
     /* fix30 round4: 공용 프로젝트 전환 지연을 제거했으므로 SNS 전용 상태도 즉시 정리한다. */
@@ -12859,10 +12875,13 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
     const host=snsHost();if(!host)return;
     const currentThread=ensureSocialThread(currentProjectId),threads=socialThreads(currentProjectId);if(!currentThread)return;
     const posts=socialPostsInThread(currentThread.id,currentProjectId);
+    const existingComposer=host.querySelector('#snsComposerText');
+    if(existingComposer){pendingDraft=existingComposer.value;storeSnsDraft()}
+    else pendingDraft=readSnsDraft(currentProjectId,currentThread.id);
     host.innerHTML=`<div class="snsProjectShell"><div class="snsTopArea"><h2 style="margin:0 0 4px">${isSseol()?'썰':'SNS 기록'}</h2><div class="meta">타래를 나눠 기록하고, 글에서 다른 타래로 자유롭게 이동할 수 있습니다.</div></div><div class="snsThreadBar"><select id="snsThreadSelect" onchange="switchSnsThread(this.value)">${threads.map(t=>`<option value="${t.id}" ${t.id===currentThread.id?'selected':''}>${esc(t.name||'이름 없는 타래')}</option>`).join('')}</select><button type="button" onclick="openNewSnsThread()">＋ 새 타래</button></div><div class="snsTimeline">${posts.length?posts.map(snsPostHtml).join(''):'<div class="empty">이 타래에는 아직 기록이 없습니다. 아래에서 첫 기록을 남겨보세요.</div>'}</div><div class="snsComposer"><textarea id="snsComposerText" placeholder="기록을 남겨보세요...">${esc(pendingDraft)}</textarea>${pendingQuote?quoteHtml(pendingQuote,true):''}${pendingThreadLink?threadLinkHtml(pendingThreadLink,true):''}${snsPendingImageHtml()}<div class="snsComposerActions"><button type="button" class="snsQuoteBtn" onclick="openSnsQuotePicker()">＋ 자료 인용</button><button type="button" onclick="openSnsImagePicker()">▧ 이미지</button><button type="button" onclick="openSnsThreadLinkPicker()">↗ 타래 연결</button><button type="button" class="primary" onclick="saveSnsPost()">작성</button></div></div></div>`;
     try{syncAppSelect(document.getElementById('snsThreadSelect'))}catch(_){ }
     const nav=document.getElementById('studioBottomNav');host.querySelector('.snsProjectShell')?.style.setProperty('--studioNavClearance',(nav?.getBoundingClientRect().height||90)+'px');
-    const ta=document.getElementById('snsComposerText');if(ta){ta.oninput=()=>{pendingDraft=ta.value};ta.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText')setSnsKeyboardState(false)},160)});ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(()=>requestAnimationFrame(()=>{settleSnsComposerView();updateSnsJumpTopState()}))})}hydrateSnsImages(host);requestAnimationFrame(updateSnsJumpTopState)
+    const ta=document.getElementById('snsComposerText');if(ta){ta.oninput=()=>{pendingDraft=ta.value;storeSnsDraft()};ta.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText')setSnsKeyboardState(false)},160)});ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(()=>requestAnimationFrame(()=>{settleSnsComposerView();updateSnsJumpTopState()}))})}hydrateSnsImages(host);requestAnimationFrame(updateSnsJumpTopState)
     const blurComposer=ev=>{if(!ev.target.closest('.snsComposer')){document.getElementById('snsComposerText')?.blur();setSnsKeyboardState(false)}};
     host.querySelector('.snsTopArea')?.addEventListener('pointerdown',blurComposer);host.querySelector('.snsThreadBar')?.addEventListener('pointerdown',blurComposer);host.querySelector('.snsTimeline')?.addEventListener('pointerdown',blurComposer);
     host.querySelector('.snsTopArea')?.addEventListener('touchstart',blurComposer,{passive:true});host.querySelector('.snsTimeline')?.addEventListener('touchmove',blurComposer,{passive:true});
@@ -12877,7 +12896,7 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
 
   window.saveSnsPost=async function(){
     const ta=document.getElementById('snsComposerText'),text=String(ta?.value||'').trim(),thread=ensureSocialThread(currentProjectId);if(!text&&!pendingQuote&&!pendingThreadLink&&!snsPendingImages.length)return alert('내용을 입력하거나 이미지/자료/타래를 연결해 주세요.');
-    const now=Date.now(),post={id:uid(),project:currentProjectId,threadId:thread?.id||'',text,quote:pendingQuote?{...pendingQuote}:null,threadLinkId:pendingThreadLink||'',liked:false,created:now,updated:now,images:[]};try{for(const image of snsPendingImages){const id=uid();await putFile(id,image.data);post.images.push(id)}}catch(e){return alert('이미지 저장에 실패했습니다.')}snsPendingImages=[];document.querySelector('.snsComposer .snsPendingImages')?.remove();db.socialPosts.push(post);if(thread)thread.updated=now;pendingQuote=null;pendingThreadLink=null;pendingDraft='';persist();refreshSnsTimeline();if(ta){ta.value='';ta.focus({preventScroll:true});try{ta.setSelectionRange(0,0)}catch(_){}}document.querySelector('.snsComposer .snsQuotePending')?.remove();document.querySelector('.snsComposer .snsThreadLinkPending')?.remove();setSnsKeyboardState(true);requestAnimationFrame(()=>requestAnimationFrame(()=>{const fresh=document.getElementById('snsComposerText');fresh?.focus({preventScroll:true});try{fresh?.setSelectionRange(0,0)}catch(_){ }settleSnsComposerView();revealLatestSnsPost();setTimeout(()=>{ensureSnsComposerVisible(false);revealLatestSnsPost();updateSnsJumpTopState()},160)}));
+    const now=Date.now(),post={id:uid(),project:currentProjectId,threadId:thread?.id||'',text,quote:pendingQuote?{...pendingQuote}:null,threadLinkId:pendingThreadLink||'',liked:false,created:now,updated:now,images:[]};try{for(const image of snsPendingImages){const id=uid();await putFile(id,image.data);post.images.push(id)}}catch(e){return alert('이미지 저장에 실패했습니다.')}snsPendingImages=[];document.querySelector('.snsComposer .snsPendingImages')?.remove();db.socialPosts.push(post);if(thread)thread.updated=now;pendingQuote=null;pendingThreadLink=null;pendingDraft='';storeSnsDraft(currentProjectId,thread?.id||'','');persist();refreshSnsTimeline();if(ta){ta.value='';ta.focus({preventScroll:true});try{ta.setSelectionRange(0,0)}catch(_){}}document.querySelector('.snsComposer .snsQuotePending')?.remove();document.querySelector('.snsComposer .snsThreadLinkPending')?.remove();setSnsKeyboardState(true);requestAnimationFrame(()=>requestAnimationFrame(()=>{const fresh=document.getElementById('snsComposerText');fresh?.focus({preventScroll:true});try{fresh?.setSelectionRange(0,0)}catch(_){ }settleSnsComposerView();revealLatestSnsPost();setTimeout(()=>{ensureSnsComposerVisible(false);revealLatestSnsPost();updateSnsJumpTopState()},160)}));
   };
   window.toggleSnsLike=function(id){const x=(db.socialPosts||[]).find(p=>p.id===id);if(!x)return;x.liked=!x.liked;x.updated=Date.now();persist();renderSnsProject()};
   window.copySnsPost=async function(id){const x=(db.socialPosts||[]).find(p=>p.id===id);if(!x)return;let text=x.text||'';if(x.quote){const q=quoteDoc(x.quote),pr=quoteProject(x.quote);if(q&&pr)text+=`${text?'\n\n':''}[인용] ${pr.name} · ${quoteKindLabel(x.quote.kind)} · ${quoteTitle(x.quote.kind,q)}`};if(x.threadLinkId){const t=threadById(x.threadLinkId);if(t)text+=`${text?'\n\n':''}[타래 이동] ${t.name}`};if(typeof copyPlainText==='function')return copyPlainText(text,'SNS 기록을 복사했습니다.');try{await navigator.clipboard.writeText(text);alert('SNS 기록을 복사했습니다.')}catch(_){alert('복사에 실패했습니다.')}};
@@ -12888,9 +12907,9 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
   if(typeof snsPreviousCollectBackupFileIds==='function')window.collectBackupFileIds=function(){const ids=new Set(snsPreviousCollectBackupFileIds.apply(this,arguments));for(const p of(db.socialPosts||[]))for(const id of snsImageIds(p))ids.add(id);return [...ids]};
   window.clearSnsPendingQuote=function(){pendingQuote=null;renderSnsProject()};
   window.clearSnsPendingThreadLink=function(){pendingThreadLink=null;renderSnsProject()};
-  window.switchSnsThread=function(id){if(!threadById(id))return;pendingDraft=document.getElementById('snsComposerText')?.value||pendingDraft;currentSnsThreadId=id;pendingThreadLink=null;renderSnsProject();setTimeout(()=>snsHost()?.scrollIntoView({block:'start'}),0)};
+  window.switchSnsThread=function(id){if(!threadById(id))return;captureSnsDraft();currentSnsThreadId=id;pendingDraft=readSnsDraft(currentProjectId,id);pendingThreadLink=null;renderSnsProject();setTimeout(()=>snsHost()?.scrollIntoView({block:'start'}),0)};
   window.openNewSnsThread=function(){pendingDraft=document.getElementById('snsComposerText')?.value||pendingDraft;openModal(`<div class="stack"><h2>새 타래</h2><input id="snsNewThreadName" placeholder="타래 이름"><div class="right"><button onclick="closeModal()">취소</button><button class="primary" onclick="createSnsThread()">만들기</button></div></div>`);setTimeout(()=>document.getElementById('snsNewThreadName')?.focus(),80)};
-  window.createSnsThread=function(){const name=String(document.getElementById('snsNewThreadName')?.value||'').trim();if(!name)return alert('타래 이름을 입력해 주세요.');if(!Array.isArray(db.socialThreads))db.socialThreads=[];const t={id:uid(),project:currentProjectId,name,created:Date.now(),updated:Date.now()};db.socialThreads.push(t);currentSnsThreadId=t.id;persist();closeModal();setTimeout(renderSnsProject,210)};
+  window.createSnsThread=function(){captureSnsDraft();const name=String(document.getElementById('snsNewThreadName')?.value||'').trim();if(!name)return alert('타래 이름을 입력해 주세요.');if(!Array.isArray(db.socialThreads))db.socialThreads=[];const t={id:uid(),project:currentProjectId,name,created:Date.now(),updated:Date.now()};db.socialThreads.push(t);currentSnsThreadId=t.id;pendingDraft=readSnsDraft(currentProjectId,t.id);persist();closeModal();setTimeout(renderSnsProject,210)};
   window.openSnsThreadLinkPicker=function(){pendingDraft=document.getElementById('snsComposerText')?.value||pendingDraft;const cur=ensureSocialThread(currentProjectId),list=socialThreads(currentProjectId).filter(t=>t.id!==cur?.id);openModal(`<div class="stack"><h2>다른 타래 연결</h2><div class="note">현재 글에서 이동할 타래를 선택합니다. 연결된 카드를 누르면 해당 타래로 이동합니다.</div>${list.length?`<div class="snsQuoteDocList">${list.map(t=>`<button type="button" class="snsQuoteDoc" onclick="chooseSnsThreadLink('${t.id}')"><b>↗ ${esc(t.name||'이름 없는 타래')}</b><div class="meta">${(db.socialPosts||[]).filter(p=>p.project===currentProjectId&&p.threadId===t.id).length}개 기록</div></button>`).join('')}</div>`:'<div class="empty">연결할 다른 타래가 없습니다. 먼저 새 타래를 만들어 주세요.</div>'}<div class="right"><button onclick="closeModal()">닫기</button></div></div>`)};
   window.chooseSnsThreadLink=function(id){if(!threadById(id))return;pendingThreadLink=id;closeModal();setTimeout(renderSnsProject,210)};
 
