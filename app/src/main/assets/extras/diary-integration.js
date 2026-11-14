@@ -28,6 +28,23 @@ async function hydrate(root=document){
 window.showDiaryImage=function(src){openModal('<div class="stack"><img src="'+src+'" style="max-width:100%;max-height:75vh;object-fit:contain"><button onclick="closeModal()">닫기</button></div>')};
 const oldNewPicture=newPictureDiary;
 newPictureDiary=async function(x){await oldNewPicture(x);if(!isDiary())return;const h=document.querySelector('#modalCard h2');if(h)h.textContent='일기';const b=document.querySelector('#modalCard .linkedBox b');if(b)b.textContent='사진 (선택)';};
+// Refresh calendar marks immediately after a successful diary save, without changing other project types.
+const baseSavePictureDiary=savePictureDiary;
+savePictureDiary=async function(id){
+ const before=(db.pictureDiaries||[]).find(x=>x.id===id)?.updated;
+ const count=(db.pictureDiaries||[]).length;
+ const result=await baseSavePictureDiary.apply(this,arguments);
+ if(isDiary()&&((db.pictureDiaries||[]).length!==count||(db.pictureDiaries||[]).find(x=>x.id===id)?.updated!==before))renderDiaryCalendar();
+ return result;
+};
+const baseSaveDiary=saveDiary;
+saveDiary=function(id){
+ const before=(db.diaries||[]).find(x=>x.id===id)?.updated;
+ const count=(db.diaries||[]).length;
+ const result=baseSaveDiary.apply(this,arguments);
+ if(isDiary()&&((db.diaries||[]).length!==count||(db.diaries||[]).find(x=>x.id===id)?.updated!==before))renderDiaryCalendar();
+ return result;
+};
 const oldRenderPicture=renderPictureDiaries;
 renderPictureDiaries=async function(){await oldRenderPicture();if(!isDiary())return;const host=document.getElementById('projectPictureDiaries');if(!host)return;host.querySelectorAll('h3').forEach(x=>x.textContent='일기');const btn=host.querySelector('.toolbar button.primary');if(btn)btn.textContent='+ 일기';};
 function entryList(date){
