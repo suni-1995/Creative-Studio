@@ -213,8 +213,18 @@ function diarySyncSelection(){
  let bar=document.getElementById('diarySelectionBar');
  if(!bar){bar=document.createElement('div');bar.id='diarySelectionBar';bar.innerHTML='<b id="diarySelectionCount"></b><div><button type="button" onclick="diaryCancelSelection()">취소</button><button type="button" class="danger" onclick="diaryDeleteSelected()">선택 삭제</button></div>';document.body.appendChild(bar)}
  bar.classList.toggle('show',diarySelecting&&isDiary());
+ diaryPositionSelectionBar(bar);
  bar.querySelector('#diarySelectionCount').textContent=diarySelected.size+'개 선택';
 }
+function diaryPositionSelectionBar(bar){
+ const nav=document.getElementById('studioBottomNav');
+ const visible=nav&&getComputedStyle(nav).display!=='none';
+ const navHeight=visible?Math.max(0,window.innerHeight-nav.getBoundingClientRect().top):0;
+ bar.style.bottom=(navHeight+8)+'px';
+ const host=document.getElementById('calendarSelected');
+ if(host)host.style.paddingBottom=diarySelecting&&isDiary()?(bar.offsetHeight+navHeight+24)+'px':'';
+}
+window.addEventListener('resize',()=>{if(diarySelecting)diarySyncSelection()});
 window.diaryCancelSelection=function(){diarySelecting=false;diarySelected.clear();diarySyncSelection()};
 function diaryToggleSelection(el){
  const kind=el.dataset.diarySelectKind,id=el.dataset.diarySelectId,key=diarySelectionKey(kind,id);
@@ -263,7 +273,7 @@ diarySelectionCss.textContent=`
 .diarySelectable.diaryIsSelected:before{content:'✓';position:absolute;top:15px;left:12px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--theme);color:var(--themeInk);z-index:3;font-weight:bold}
 .diarySelectable.diaryIsSelected>.diaryTimelineHeader{padding-left:34px}
 .diarySelectable.diaryIsSelected.calendarEntry{padding-left:48px}
-#diarySelectionBar{position:fixed;z-index:125;bottom:calc(18px + env(safe-area-inset-bottom));left:12px;right:12px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--card);display:none;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 8px 30px #0005}
+#diarySelectionBar{position:fixed;z-index:215;bottom:calc(100px + env(safe-area-inset-bottom));left:12px;right:12px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--card);display:none;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 8px 30px #0005}
 #diarySelectionBar.show{display:flex}#diarySelectionBar>div{display:flex;gap:8px}
 `;document.head.appendChild(diarySelectionCss);
 })();
