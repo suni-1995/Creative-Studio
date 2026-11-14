@@ -89,7 +89,7 @@ window.toggleDiaryTimeline=function(id){if(expanded.has(id))expanded.delete(id);
 function timelineRow(x){
  const open=expanded.has(x.id);
  const subs=(x.subitems||[]).slice().sort((a,b)=>a.time&&b.time?a.time.localeCompare(b.time):a.time?-1:b.time?1:(a.created||0)-(b.created||0));
- return '<div class="diaryRecord"><div class="diaryTimelineHeader"><button class="diaryFold" onclick="toggleDiaryTimeline(\''+x.id+'\')">'+(diarySymbol(x)?'<span class="diaryTimelineSymbol" style="color:'+diaryColor(x)+'">'+diarySymbol(x)+'</span>':'')+esc(x.title||'제목 없음')+' <span class="diaryArrow">'+(open?'▾':'▸')+'</span></button><button onclick="editDiaryTimeline(\''+x.id+'\')">편집</button></div>'+
+ return '<div class="diaryRecord diarySelectable" data-diary-select-kind="timeline" data-diary-select-id="'+x.id+'"><div class="diaryTimelineHeader"><button class="diaryFold" onclick="toggleDiaryTimeline(\''+x.id+'\')">'+(diarySymbol(x)?'<span class="diaryTimelineSymbol" style="color:'+diaryColor(x)+'">'+diarySymbol(x)+'</span>':'')+esc(x.title||'제목 없음')+' <span class="diaryArrow">'+(open?'▾':'▸')+'</span></button><button onclick="editDiaryTimeline(\''+x.id+'\')">편집</button></div>'+
  (open?'<div class="diaryExpanded"><div class="meta">'+esc(x.dateLabel||'')+'</div>'+(x.body?'<div class="diaryRecordBody diaryTimelineScrollable">'+esc(x.body)+'</div>':'')+((x.diaryImageIds||[]).length?'<div class="diaryImageStrip">'+[...new Set(x.diaryImageIds)].map(imageTag).join('')+'</div>':'')+subs.map(s=>'<div class="diarySubCard"><button class="diarySubCardOpen" onclick="previewDiarySub(\''+x.id+'\',\''+s.id+'\')"><div class="diarySubHeading"><b>'+esc(s.title||'세부 항목')+'</b>'+(s.time?'<span class="meta">'+esc(s.time)+'</span>':'')+'</div><div class="diarySubExcerpt">'+esc(s.body||'')+'</div></button>'+((s.imageIds||[]).length?'<div class="diarySubHorizontalImages">'+[...new Set(s.imageIds)].slice(0,4).map(imageTag).join('')+'</div>':'')+'</div>').join('')+'<button class="diaryAddSub" onclick="editDiarySub(\''+x.id+'\')">+ 세부 항목 추가</button></div>':'')+'</div>';
 }
 function diaryCommentsHtml(kind,id,comments){const rows=Array.isArray(comments)?comments:[];return '<section class="fix28ReaderComments diaryCommentSection"><h3>코멘트</h3><div class="meta">'+rows.length+'개</div><div class="fix28CommentList">'+(rows.length?rows.map(c=>'<div class="fix28Comment isEditable"><button class="fix28CommentDelete danger" type="button" aria-label="코멘트 삭제" onclick="diaryDeleteComment(\''+kind+'\',\''+id+'\',\''+c.id+'\')">×</button>'+esc(c.text||'')+'<div class="meta">'+new Date(c.created||Date.now()).toLocaleString()+'</div></div>').join(''):'<div class="meta">아직 코멘트가 없습니다.</div>')+'</div><div class="fix28CommentComposer"><textarea id="diaryCommentInput" placeholder="코멘트를 입력해 주세요."></textarea><button class="primary" type="button" onclick="diaryAddComment(\''+kind+'\',\''+id+'\')">추가</button></div></section>'}
@@ -108,11 +108,12 @@ renderDiaryCalendarSelected=function(){
  const date=selected(),allItems=entryList(date),items=allItems.filter(e=>diaryFilter==='all'||(diaryFilter==='diary'?['diary','picture'].includes(e.kind):e.kind===diaryFilter));
  const rows=items.map(({kind,x})=>{
  if(kind==='timeline')return timelineRow(x);
- if(kind==='schedule')return '<div class="calendarEntry" onclick="previewDiarySchedule(\''+x.id+'\')"><div class="calendarEntryType">스케줄 · '+esc(x.category)+'</div><b>'+esc(x.title)+'</b><div class="meta">'+esc(x.time||'')+'</div></div>';
- return '<div class="calendarEntry" onclick="diaryCalendarOpenEntry(\''+kind+'\',\''+x.id+'\')"><div class="calendarEntryType">일기</div><b>'+esc(x.title||'제목 없음')+'</b><div class="calendarEntryBody">'+esc(x.body||'')+'</div></div>';
+ if(kind==='schedule')return '<div class="calendarEntry diarySelectable" data-diary-select-kind="schedule" data-diary-select-id="'+x.id+'" onclick="previewDiarySchedule(\''+x.id+'\')"><div class="calendarEntryType">스케줄 · '+esc(x.category)+'</div><b>'+esc(x.title)+'</b><div class="meta">'+esc(x.time||'')+'</div></div>';
+ return '<div class="calendarEntry diarySelectable" data-diary-select-kind="'+kind+'" data-diary-select-id="'+x.id+'" onclick="diaryCalendarOpenEntry(\''+kind+'\',\''+x.id+'\')"><div class="calendarEntryType">일기</div><b>'+esc(x.title||'제목 없음')+'</b><div class="calendarEntryBody">'+esc(x.body||'')+'</div></div>';
  }).join('');
  host.innerHTML='<div class="calendarSelectedHead"><b>'+esc(date)+'</b><span class="meta">'+items.length+'개의 기록</span></div><div class="calendarQuickActions"><button onclick="diaryCalendarNew(\'diary\',\''+date+'\')">+ 일기</button><button onclick="diaryCalendarNew(\'timeline\',\''+date+'\')">+ 타임라인</button><button onclick="diaryCalendarNew(\'schedule\',\''+date+'\')">+ 스케줄</button></div><div class="diaryFilters">'+[['all','전체'],['diary','일기'],['timeline','타임라인'],['schedule','스케줄']].map(([k,n])=>'<button class="'+(diaryFilter===k?'active':'')+'" onclick="setDiaryFilter(\''+k+'\')">'+n+'</button>').join('')+'</div><div class="diaryEntryList">'+ (rows||'<div class="empty">기록이 없습니다.</div>')+'</div>';
  hydrate(host);
+ diarySyncSelection();
 };
 window.editDiaryTimeline=function(id,date){
  const x=id?findTimeline(id):null;const t=x?{...x,diaryImageIds:[...(x.diaryImageIds||[])],subitems:[...(x.subitems||[])]}:{id:uid(),project:currentProjectId,dateLabel:date||selected(),title:'',tags:'',body:'',subitems:[],diaryImageIds:[],diarySymbol:'',diarySymbolColor:'#8c9bff'};
@@ -199,4 +200,70 @@ const diaryExtraStyle=document.createElement('style');diaryExtraStyle.textConten
 const diarySymbolStyle=document.createElement('style');diarySymbolStyle.textContent='.diarySymbolPicker{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0}.diarySymbolPicker label{display:grid;grid-template-rows:auto 50px;gap:8px;min-width:0}.diarySymbolPicker select{width:100%;min-width:0;height:50px;box-sizing:border-box}.diarySymbolColors{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.diarySymbolColorChoice{width:24px;height:24px;min-height:24px;padding:0;border-radius:50%;border:2px solid transparent}.diarySymbolColorChoice.selected{outline:2px solid var(--ink);outline-offset:2px}.diarySymbolColors input[type=color]{width:32px;height:30px;padding:0}.diaryTimelineSymbol{display:inline-block;margin-right:9px;font-size:1.15em}.diaryCalendarSymbol{display:inline-flex;align-items:center;justify-content:center;font-size:13px;line-height:1;flex:0 0 auto}.calendarMarks{display:flex;align-items:center;flex-wrap:wrap;gap:3px}.diarySubPreview{width:100%;min-width:0;box-sizing:border-box}.diarySubPreview .diaryCommentSection{width:100%;padding:12px 0}.diarySubPreview .fix28CommentComposer{width:100%;display:flex;flex-direction:column;gap:8px}.diarySubPreview .fix28CommentComposer textarea,.diarySubPreview .fix28CommentComposer button{width:100%;box-sizing:border-box}.diarySubPreview>.right{width:100%;display:flex;gap:10px;margin-top:0}.diarySubPreview>.right>button{flex:1;min-width:0}';document.head.appendChild(diarySymbolStyle);
 const diaryPaletteStyle=document.createElement('style');diaryPaletteStyle.textContent='.diarySymbolColorTrigger{width:100%;height:50px;min-height:0;display:block;padding:0;border:1px solid var(--line);border-radius:12px;background:transparent;cursor:pointer;box-sizing:border-box;overflow:hidden}.diarySymbolColorTrigger span{display:block;width:100%;height:100%;border:0;border-radius:0}.diaryPaletteOverlay{position:fixed;inset:0;z-index:99999;background:#0009;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}.diaryPaletteDialog{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:20px;width:min(100%,420px);padding:20px;display:grid;gap:18px;box-sizing:border-box}.diaryPaletteDialog h2{margin:0;font-size:21px}.diaryPaletteGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.diaryPaletteTile{width:100%;aspect-ratio:1.35;min-height:0;border-radius:12px;border:2px solid #ffffff44;padding:0}.diaryPaletteTile.selected{outline:2px solid var(--ink);outline-offset:2px}.diaryPaletteCustom{width:100%;min-height:50px;background:#393547;color:white;border:0;border-radius:12px}.diaryPaletteNative{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.diaryPalettePreview{display:flex;align-items:center;gap:12px}.diaryPaletteSample{width:52px;height:52px;border-radius:12px}.diaryPaletteActions{display:flex;justify-content:flex-end;gap:8px}.diaryPaletteActions button{padding:12px 18px;border-radius:10px}.diaryPaletteApply{background:var(--theme);color:white}';document.head.appendChild(diaryPaletteStyle);
 const style=document.createElement('style');style.textContent='.diaryTimelineHeader{display:flex;align-items:center;justify-content:space-between;gap:12px}.diaryArrow{margin-left:10px}.diaryEntryList>.diaryRecord,.diaryEntryList>.calendarEntry{margin-top:12px}.diaryFilters{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}.diaryFilters button{font-size:12px;padding:5px 10px;border-radius:99px}.diaryFilters button.active{background:var(--theme);color:white}.diaryPreviewItem{position:relative;flex:none}.diaryPreviewItem img{width:90px;height:90px;object-fit:cover;border-radius:9px}.diaryPreviewItem button{position:absolute;right:0;top:0;padding:2px 7px}.diaryScheduleDetails{display:grid;gap:12px;overflow-wrap:anywhere}.diaryScheduleDetails b{margin-right:10px}'+'.calendarMark.schedule,.calendarLegend .sc i{background:color-mix(in srgb,var(--theme) 45%,#e9a23b)}.diaryFold{border:0;background:transparent;color:var(--ink);font-weight:800;text-align:left;flex:1}.diaryRecord{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px;background:var(--card)}.diaryExpanded{padding:10px 3px;display:grid;gap:12px}.diaryRecordBody{white-space:pre-wrap;overflow-wrap:anywhere}.diarySub{border:1px solid var(--line);border-radius:12px;padding:12px}.diaryImageStrip{display:flex;gap:8px;overflow-x:auto;max-width:100%}.diarySubImage{width:95px;height:95px;object-fit:cover;border-radius:10px;flex-shrink:0}.diarySubEdit{padding:12px;border:1px solid var(--line);border-radius:12px;margin:8px 0}.calendarQuickActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.calendarQuickActions button{min-width:0}';document.head.appendChild(style);
+
+/* Diary-only long-press selection; does not change other projects' bulk behavior. */
+const diarySelected=new Map();let diarySelecting=false,diaryPressTimer=null,diaryPressStart=null,diaryIgnoreClickUntil=0;
+const diarySelectionKey=(kind,id)=>kind+'::'+id;
+function diarySyncSelection(){
+ document.querySelectorAll('.diarySelectable').forEach(el=>{
+  const yes=diarySelected.has(diarySelectionKey(el.dataset.diarySelectKind,el.dataset.diarySelectId));
+  el.classList.toggle('diaryIsSelected',yes);
+  el.classList.toggle('diarySelectionActive',diarySelecting);
+ });
+ let bar=document.getElementById('diarySelectionBar');
+ if(!bar){bar=document.createElement('div');bar.id='diarySelectionBar';bar.innerHTML='<b id="diarySelectionCount"></b><div><button type="button" onclick="diaryCancelSelection()">취소</button><button type="button" class="danger" onclick="diaryDeleteSelected()">선택 삭제</button></div>';document.body.appendChild(bar)}
+ bar.classList.toggle('show',diarySelecting&&isDiary());
+ bar.querySelector('#diarySelectionCount').textContent=diarySelected.size+'개 선택';
+}
+window.diaryCancelSelection=function(){diarySelecting=false;diarySelected.clear();diarySyncSelection()};
+function diaryToggleSelection(el){
+ const kind=el.dataset.diarySelectKind,id=el.dataset.diarySelectId,key=diarySelectionKey(kind,id);
+ if(diarySelected.has(key))diarySelected.delete(key);else diarySelected.set(key,{kind,id});
+ if(!diarySelected.size)diarySelecting=false;
+ diarySyncSelection();
+}
+window.diaryDeleteSelected=function(){
+ if(!diarySelected.size)return;
+ if(!confirm(diarySelected.size+'개 기록을 휴지통으로 이동하시겠습니까?'))return;
+ for(const {kind,id} of diarySelected.values()){
+  const table={diary:'diaries',picture:'pictureDiaries',timeline:'timeline',schedule:'diarySchedules'}[kind];
+  if(!table)continue;
+  const x=(db[table]||[]).find(v=>v.id===id&&v.project===currentProjectId);if(!x)continue;
+  if(kind==='schedule')unalarm(x);
+  if(!Array.isArray(db.trash))db.trash=[];
+  db.trash.unshift({id:uid(),kind:table,data:x,deletedAt:Date.now()});
+  db[table]=db[table].filter(v=>v!==x);
+ }
+ diaryCancelSelection();refresh();renderTrash();
+};
+document.addEventListener('touchstart',e=>{
+ if(!isDiary()||diarySelecting||e.touches.length!==1||e.target.closest('button,input,textarea,select,a,label'))return;
+ const el=e.target.closest('.diarySelectable');if(!el)return;
+ const t=e.touches[0];diaryPressStart={x:t.clientX,y:t.clientY};
+ clearTimeout(diaryPressTimer);
+ diaryPressTimer=setTimeout(()=>{diarySelecting=true;diarySelected.set(diarySelectionKey(el.dataset.diarySelectKind,el.dataset.diarySelectId),{kind:el.dataset.diarySelectKind,id:el.dataset.diarySelectId});diaryIgnoreClickUntil=Date.now()+850;diarySyncSelection();try{navigator.vibrate?.(30)}catch(_){}},520);
+},true);
+document.addEventListener('touchmove',e=>{if(!diaryPressTimer||!diaryPressStart||!e.touches[0])return;const t=e.touches[0];if(Math.abs(t.clientX-diaryPressStart.x)>14||Math.abs(t.clientY-diaryPressStart.y)>14){clearTimeout(diaryPressTimer);diaryPressTimer=null}},true);
+for(const ev of ['touchend','touchcancel'])document.addEventListener(ev,()=>{clearTimeout(diaryPressTimer);diaryPressTimer=null},true);
+document.addEventListener('click',e=>{
+ if(!isDiary())return;const el=e.target.closest('.diarySelectable');if(!el)return;
+ if(Date.now()<diaryIgnoreClickUntil){e.preventDefault();e.stopImmediatePropagation();return}
+ if(!diarySelecting)return;
+ e.preventDefault();e.stopImmediatePropagation();diaryToggleSelection(el);
+},true);
+document.addEventListener('contextmenu',e=>{
+ if(!isDiary()||e.target.closest('button,input,textarea,select,a,label'))return;
+ const el=e.target.closest('.diarySelectable');if(!el)return;
+ e.preventDefault();if(!diarySelecting){diarySelecting=true;diarySelected.set(diarySelectionKey(el.dataset.diarySelectKind,el.dataset.diarySelectId),{kind:el.dataset.diarySelectKind,id:el.dataset.diarySelectId});diaryIgnoreClickUntil=Date.now()+500;diarySyncSelection()}
+},true);
+const diarySelectionCss=document.createElement('style');
+diarySelectionCss.textContent=`
+.diarySelectable{position:relative;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.diarySelectable.diaryIsSelected{outline:2px solid var(--theme);outline-offset:-2px}
+.diarySelectable.diaryIsSelected:before{content:'✓';position:absolute;top:15px;left:12px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--theme);color:var(--themeInk);z-index:3;font-weight:bold}
+.diarySelectable.diaryIsSelected>.diaryTimelineHeader{padding-left:34px}
+.diarySelectable.diaryIsSelected.calendarEntry{padding-left:48px}
+#diarySelectionBar{position:fixed;z-index:125;bottom:calc(18px + env(safe-area-inset-bottom));left:12px;right:12px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--card);display:none;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 8px 30px #0005}
+#diarySelectionBar.show{display:flex}#diarySelectionBar>div{display:flex;gap:8px}
+`;document.head.appendChild(diarySelectionCss);
 })();
