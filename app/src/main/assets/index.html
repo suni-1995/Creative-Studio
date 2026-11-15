@@ -12693,6 +12693,9 @@ body.snsKeyboardActive:not(:has(#snsComposerText:focus)) #studioBottomNav[data-p
 body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!important;visibility:visible!important}
 
 .chatNovelShell .chatComposer{position:sticky!important;bottom:calc(var(--studioNavClearance,100px) + 8px)!important;gap:6px!important}
+/* Chat novel only: keep the complete composer in document flow while keyboard is open. */
+body.snsKeyboardActive #projectRecent .chatNovelShell{padding-bottom:calc(var(--studioNavClearance,100px) + 24px)!important}
+body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:relative!important;bottom:auto!important;scroll-margin-bottom:calc(var(--studioNavClearance,100px) + 12px)!important}
 .chatQuickCharacter{display:grid;gap:6px;margin:0 0 8px}
 /* Compact only the chat character picker; keep general quote lists unchanged. */
 #modalCard:has(.chatCharacterOption) .snsQuoteCategory + .snsQuoteCategory{margin-top:5px!important}
@@ -13038,7 +13041,7 @@ body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!im
     const vv=window.visualViewport,top=vv?.offsetTop||0,bottom=top+(vv?.height||window.innerHeight),rect=el.getBoundingClientRect();
     const nav=document.getElementById('studioBottomNav');
     const navHeight=nav?.getBoundingClientRect().height||90;
-    const limit=Math.min(bottom-navHeight-10,nav?.getBoundingClientRect().top??bottom);
+    const limit=Math.min(bottom-10,nav?.getBoundingClientRect().top??bottom)-10;
     const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
     if(Math.abs(delta)>2)window.scrollBy(0,delta);
   }
