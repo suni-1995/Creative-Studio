@@ -13064,6 +13064,10 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
   function loadChatDraft(roomId){const room=roomId?chatRooms().find(r=>r.id===roomId):chatRoom();if(!room)return '';try{return localStorage.getItem(chatDraftKey(currentProjectId,room.id))||''}catch(_){return ''}}
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&chatMode)saveChatDraft()});
   window.addEventListener('pagehide',()=>{if(chatMode)saveChatDraft()});
+  // Capture the current chat draft before home/dashboard navigation removes the composer.
+  document.addEventListener('click',e=>{if(chatMode&&document.getElementById('chatNovelText')&&e.target.closest('[data-studio-nav], #studioBottomNav, .crumb button'))saveChatDraft()},true);
+  const chatDraftCloseProject=window.closeProject;
+  window.closeProject=function(){if(chatMode&&document.getElementById('chatNovelText'))saveChatDraft();return chatDraftCloseProject.apply(this,arguments)};
   const chatRooms=()=>db.snsChatRooms.filter(r=>r.project===currentProjectId);
   const chatRoom=()=>chatRooms().find(r=>r.id===chatRoomId)||chatRooms()[0]||null;
   const chatCreativeTypes=['advanced','general','short','fanwork'];
@@ -13087,7 +13091,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
   }
   function chatRender(){
     const host=snsHost();if(!host||currentProjectType()!==SNS)return;
-    const rooms=chatRooms(),r=chatRoom();if(r){if(chatRoomId!==r.id){chatRoomId=r.id;chatDraft=loadChatDraft(r.id)}else if(!chatDraft&&!document.getElementById('chatNovelText'))chatDraft=loadChatDraft(r.id);}
+    const rooms=chatRooms(),r=chatRoom();if(r){if(chatRoomId!==r.id){chatRoomId=r.id;chatDraft=loadChatDraft(r.id)}else if(!document.getElementById('chatNovelText'))chatDraft=loadChatDraft(r.id);}
     host.innerHTML='<div class="snsProjectShell chatNovelShell"><div class="chatModeSwitch"><button type="button" onclick="switchSnsChatMode(false)">SNS 기록</button><button type="button" class="primary">채팅소설 만들기</button></div>'+
       '<div class="snsTopArea"><h2 style="margin:0">채팅소설</h2><div class="meta">채팅방마다 하나의 창작 프로젝트를 연결합니다.</div></div>'+
       '<div class="snsThreadBar"><select id="chatRoomSelect" onchange="switchSnsChatRoom(this.value)">'+(rooms.length?rooms.map(x=>'<option value="'+chatEsc(x.id)+'" '+(x.id===r?.id?'selected':'')+'>'+chatEsc(x.name)+'</option>').join(''):'<option value="">채팅방 없음</option>')+'</select><button type="button" onclick="openNewSnsChatRoom()">＋ 새 채팅방</button></div>'+
