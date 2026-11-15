@@ -12894,16 +12894,12 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
     if(currentProjectType()===SNS){
       const composer=ta.closest('.snsComposer'),shell=composer?.closest('.snsProjectShell');
       if(!composer||!shell)return;
-      const nav=document.getElementById('studioBottomNav');
-      const navRect=nav?.getBoundingClientRect();
-      const navVisible=nav&&getComputedStyle(nav).display!=='none'&&navRect?.height>0;
-      const limit=Math.min(bottom,navVisible?navRect.top:bottom)-8;
       const rect=composer.getBoundingClientRect();
-      // Keep enough scroll room, but do not leave a full composer-sized blank area.
-      shell.style.paddingBottom='0px';
-      // Align the action buttons just above the navigation, in either direction.
-      const delta=rect.bottom-limit;
-      if(Math.abs(delta)>2&&rect.height<limit-top-8)window.scrollBy({top:delta,behavior:'auto'});
+      const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
+      const limit=bottom-navHeight-10;
+      // Use the same visibility-only scroll correction as chat novels.
+      const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
+      if(Math.abs(delta)>2)window.scrollBy(0,delta);
       return;
     }
     const r=ta.getBoundingClientRect();
