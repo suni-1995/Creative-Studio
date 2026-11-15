@@ -12899,10 +12899,11 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
       const navVisible=nav&&getComputedStyle(nav).display!=='none'&&navRect?.height>0;
       const limit=Math.min(bottom,navVisible?navRect.top:bottom)-8;
       const rect=composer.getBoundingClientRect();
-      const room=Math.ceil(rect.height+(navVisible?navRect.height:0)+24);
-      shell.style.paddingBottom=room+'px';
-      const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
-      if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:'auto'});
+      // Keep enough scroll room, but do not leave a full composer-sized blank area.
+      shell.style.paddingBottom='24px';
+      // Align the action buttons just above the navigation, in either direction.
+      const delta=rect.bottom-limit;
+      if(Math.abs(delta)>2&&rect.height<limit-top-8)window.scrollBy({top:delta,behavior:'auto'});
       return;
     }
     const r=ta.getBoundingClientRect();
