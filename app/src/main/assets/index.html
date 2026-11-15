@@ -12778,8 +12778,19 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
       const locked=document.createElement('div');locked.className='projectTypeLocked';locked.textContent='SNS 프로젝트 (변경 불가)';
       const note=document.createElement('div');note.className='note projectTypeLockNote';note.textContent='SNS 프로젝트는 타임라인 기록 전용 유형으로 생성 후 변경할 수 없습니다.';
       sel.replaceWith(locked);locked.after(note);sel=null;
-    }else if(!existing&&sel&&!sel.querySelector('option[value="sns"]')){
-      const o=document.createElement('option');o.value=SNS;o.textContent='SNS 프로젝트';sel.appendChild(o);try{syncAppSelect(sel)}catch(_){ }
+    }else if(!existing&&sel){
+      // Insert SNS before diary instead of appending it after the last type.
+      // The native select and its custom overlay both read the same ordered options.
+      let o=sel.querySelector('option[value="sns"]');
+      if(!o){o=document.createElement('option');o.value=SNS;o.textContent='SNS 프로젝트';}
+      const diary=sel.querySelector('option[value="diary"]');
+      if(diary)sel.insertBefore(o,diary);
+      else{
+        const order=['advanced','general','short','fanwork','sns','diary','ledger','memo'];
+        const following=[...sel.options].find(opt=>order.indexOf(opt.value)>order.indexOf(SNS));
+        if(following)sel.insertBefore(o,following);else sel.appendChild(o);
+      }
+      try{syncAppSelect(sel)}catch(_){ }
     }
     return r;
   };
