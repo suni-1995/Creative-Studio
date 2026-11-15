@@ -12874,7 +12874,7 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
     document.body.classList.toggle('snsKeyboardActive',active);
     const shell=snsHost()?.querySelector('.snsProjectShell');
     shell?.classList.toggle('snsKeyboardOpen',active);
-    if(!active){const composer=shell?.querySelector('.snsComposer');if(composer){composer.style.removeProperty('margin-top');composer.style.removeProperty('position');composer.style.removeProperty('top');composer.style.removeProperty('left');composer.style.removeProperty('width');composer.style.removeProperty('bottom')}shell?.style.removeProperty('padding-bottom')}
+    if(!active){const composer=shell?.querySelector('.snsComposer');if(composer){for(const prop of ['margin-top','position','top','left','width','bottom'])composer.style.removeProperty(prop)}shell?.style.removeProperty('padding-bottom')}
     // Inline visibility prevents the later project-nav display rules from covering the editor.
     const nav=document.getElementById('studioBottomNav');
     if(nav){nav.style.removeProperty('display');nav.style.removeProperty('visibility')}
@@ -12989,7 +12989,7 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
       '<div class="snsComposer chatComposer"><div class="chatSideButtons"><button type="button" onclick="chooseSnsChatSide(\'left\')">'+chatEsc(chatCharacters(r).find(c=>c.id===r.leftId)?.name||'왼쪽 캐릭터')+'</button><button type="button" onclick="openSnsChatQuotePicker()">인용</button><button type="button" onclick="chooseSnsChatSide(\'narration\')">설명문</button><button type="button" onclick="chooseSnsChatSide(\'right\')">'+chatEsc(chatCharacters(r).find(c=>c.id===r.rightId)?.name||'오른쪽 캐릭터')+'</button></div>'+
       '<div class="meta" id="chatSelectedSide">'+chatEsc(chatSide==='narration'?'설명문':chatSide==='left'?(chatCharacters(r).find(c=>c.id===r.leftId)?.name||'왼쪽 캐릭터'):(chatCharacters(r).find(c=>c.id===r.rightId)?.name||'오른쪽 캐릭터'))+'</div><textarea id="chatNovelText" placeholder="대사 또는 설명문 작성...">'+chatEsc(chatDraft)+'</textarea><div id="chatQuotePending">'+chatQuoteCard(chatQuote)+'</div><button type="button" class="primary chatSubmit" onclick="saveSnsChatMessage()">작성</button></div>':'<div class="empty">새 채팅방을 만들어 창작 프로젝트를 연결해 주세요.</div>')+'</div>';
     const sel=document.getElementById('chatRoomSelect');try{if(sel)syncAppSelect(sel)}catch(_){}
-    const ta=document.getElementById('chatNovelText');if(ta){ta.oninput=()=>{chatDraft=ta.value;saveChatDraft()};ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,200)});ta.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText'&&document.activeElement?.id!=='chatNovelText')setSnsKeyboardState(snsKeyboardIsOpen())},180))}
+    const ta=document.getElementById('chatNovelText');if(ta){ta.oninput=()=>{chatDraft=ta.value;saveChatDraft()};ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,200);setTimeout(chatEnsureVisible,380)});ta.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText'&&document.activeElement?.id!=='chatNovelText')setSnsKeyboardState(snsKeyboardIsOpen())},180))}
     chatHydrate();chatBindQuotePreviews();chatBindLongPress();
   }
   const _originalSnsChatRender=window.renderSnsProject;
@@ -13017,12 +13017,17 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
   function chatMessageMenu(id){if(!db.snsChatMessages.some(x=>x.id===id&&x.project===currentProjectId))return;openModal('<div class="stack"><h2>채팅 관리</h2><button type="button" id="chatManageEdit">수정</button><button type="button" id="chatManageDelete">삭제</button><div class="right"><button type="button" onclick="closeModal()">닫기</button></div></div>');document.getElementById('chatManageEdit').onclick=()=>{closeModal();setTimeout(()=>editSnsChatMessage(id),200)};document.getElementById('chatManageDelete').onclick=()=>{closeModal();setTimeout(()=>deleteSnsChatMessage(id),200)}}
   function chatBindQuotePreviews(){document.querySelectorAll('.chatNovelShell [data-chat-preview-kind]').forEach(el=>{el.onclick=()=>window.openSnsQuote(el.dataset.chatPreviewKind,el.dataset.chatPreviewId)})}
   function chatEnsureVisible(){
-    const el=document.querySelector('.chatNovelShell .chatComposer');if(!el)return;
-    const vv=window.visualViewport,top=vv?.offsetTop||0,bottom=top+(vv?.height||window.innerHeight),rect=el.getBoundingClientRect();
-    const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
-    const limit=bottom-navHeight-10;
-    const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
-    if(Math.abs(delta)>2)window.scrollBy(0,delta);
+    const ta=document.getElementById('chatNovelText'),el=ta?.closest('.chatComposer'),shell=el?.closest('.chatNovelShell');
+    if(!el||!shell||document.activeElement!==ta)return;
+    if(!snsKeyboardIsOpen())return;
+    const vv=window.visualViewport,top=vv?.offsetTop||0,bottom=top+(vv?.height||window.innerHeight);
+    const rect=shell.getBoundingClientRect(),height=el.getBoundingClientRect().height;
+    shell.style.paddingBottom=(height+20)+'px';
+    el.style.setProperty('position','fixed','important');
+    el.style.setProperty('bottom','auto','important');
+    el.style.setProperty('top',Math.max(top+4,bottom-height-8)+'px','important');
+    el.style.setProperty('left',rect.left+'px','important');
+    el.style.setProperty('width',rect.width+'px','important');
   }
   function chatRevealLatest(){
     const timeline=document.querySelector('.chatNovelShell .chatTimeline');
@@ -14115,7 +14120,8 @@ body.studioDetail #studioBottomNav[data-project-menu="yes"]{display:grid!importa
 body.studioDetail.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!important}
 /* SNS thread only: the keyboard owns the bottom area, not the project menu. */
 body.studioDetail.snsKeyboardActive:has(#projectRecent .snsProjectShell.snsKeyboardOpen) #studioBottomNav[data-project-menu="yes"]{display:none!important;visibility:hidden!important}
-body.snsKeyboardActive #projectRecent .snsProjectShell.snsKeyboardOpen .snsComposer{position:fixed!important;bottom:auto!important;scroll-margin-bottom:12px!important}
+body.snsKeyboardActive #projectRecent .snsProjectShell.snsKeyboardOpen:not(.chatNovelShell) .snsComposer{position:fixed!important;bottom:auto!important;scroll-margin-bottom:12px!important}
+body.snsKeyboardActive #projectRecent .chatNovelShell.snsKeyboardOpen .chatComposer:has(#chatNovelText:focus){position:fixed!important;bottom:auto!important}
 body.snsKeyboardActive #projectRecent .snsComposer{position:sticky;bottom:6px}
 body.snsKeyboardActive #projectRecent .snsProjectShell{padding-bottom:24px}
 body.studioDetail .wrap{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}
