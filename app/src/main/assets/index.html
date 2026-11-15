@@ -12903,7 +12903,7 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
   function settleSnsComposerView(){if(!snsEditorActive()||document.activeElement?.id!=='snsComposerText'||!snsKeyboardIsOpen())return;setSnsKeyboardState(true);requestAnimationFrame(()=>ensureSnsComposerVisible());setTimeout(()=>ensureSnsComposerVisible(),160)}
   if(window.visualViewport&&!window.__snsViewportBound){
     window.__snsViewportBound=true;
-    window.visualViewport.addEventListener('resize',()=>{if(!snsEditorActive())return;const focused=document.activeElement?.id==='snsComposerText',chatFocused=document.activeElement?.id==='chatNovelText';const keyboardOpen=snsKeyboardIsOpen();setSnsKeyboardState(keyboardOpen);if(focused&&keyboardOpen)settleSnsComposerView();if(chatFocused&&keyboardOpen){requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,100)}});
+    window.visualViewport.addEventListener('resize',()=>{if(!snsEditorActive())return;const focused=document.activeElement?.id==='snsComposerText',chatFocused=document.activeElement?.id==='chatNovelText';const keyboardOpen=snsKeyboardIsOpen()||chatFocused;setSnsKeyboardState(keyboardOpen);if(focused&&keyboardOpen)settleSnsComposerView();if(chatFocused&&keyboardOpen){requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,100)}});
     window.visualViewport.addEventListener('scroll',()=>{if(snsEditorActive()&&document.activeElement?.id==='snsComposerText')ensureSnsComposerVisible()},{passive:true});
   }
 
@@ -12930,6 +12930,11 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
   if(!Array.isArray(db.snsChatRooms))db.snsChatRooms=[];
   if(!Array.isArray(db.snsChatMessages))db.snsChatMessages=[];
   let chatMode=false,chatRoomId='',chatSide='left',chatQuote=null,chatDraft='';
+  const chatDraftKey=(pid,rid)=>'creativeStudio:chatDraft:'+pid+':'+rid;
+  function saveChatDraft(){const room=chatRoom();if(!room)return;const ta=document.getElementById('chatNovelText');if(ta)chatDraft=ta.value;try{if(chatDraft)localStorage.setItem(chatDraftKey(currentProjectId,room.id),chatDraft);else localStorage.removeItem(chatDraftKey(currentProjectId,room.id))}catch(_){}}
+  function loadChatDraft(){const room=chatRoom();if(!room)return '';try{return localStorage.getItem(chatDraftKey(currentProjectId,room.id))||''}catch(_){return ''}}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&chatMode)saveChatDraft()});
+  window.addEventListener('pagehide',()=>{if(chatMode)saveChatDraft()});
   const chatRooms=()=>db.snsChatRooms.filter(r=>r.project===currentProjectId);
   const chatRoom=()=>chatRooms().find(r=>r.id===chatRoomId)||chatRooms()[0]||null;
   const chatCreativeTypes=['advanced','general','short','fanwork'];
@@ -12947,8 +12952,8 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
     return messages.map(m=>{
       const c=chatCharacters(r).find(x=>x.id===m.characterId),name=m.characterName||c?.name||'캐릭터 없음';
       const content='<div class="chatText">'+chatEsc(m.text)+'</div>'+chatQuoteCard(m.quote);
-      const actions='<div class="chatMessageActions"><button type="button" aria-label="수정" title="수정" onclick="editSnsChatMessage('+JSON.stringify(m.id)+')">∨</button><button type="button" aria-label="삭제" title="삭제" onclick="deleteSnsChatMessage('+JSON.stringify(m.id)+')">×</button></div>';
-      return m.side==='narration'?'<div class="chatNarration">'+content+actions+'</div>':'<div class="chatMessage '+(m.side==='right'?'right':'left')+'">'+chatAvatar(c)+'<div class="chatMessageBody"><div class="chatName">'+chatEsc(name)+'</div><div class="chatBubble">'+content+'</div>'+actions+'</div></div>';
+      const actions='';const gesture=' data-chat-message-id="'+chatEsc(m.id)+'"';
+      return m.side==='narration'?'<div class="chatNarration"'+gesture+'>'+content+'</div>':'<div class="chatMessage '+(m.side==='right'?'right':'left')+'"'+gesture+'>'+chatAvatar(c)+'<div class="chatMessageBody"><div class="chatName">'+chatEsc(name)+'</div><div class="chatBubble">'+content+'</div>'+actions+'</div></div>';
     }).join('');
   }
   function chatRender(){
@@ -12961,8 +12966,8 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
       '<div class="snsComposer chatComposer"><div class="chatSideButtons"><button type="button" onclick="chooseSnsChatSide(\'left\')">'+chatEsc(chatCharacters(r).find(c=>c.id===r.leftId)?.name||'왼쪽 캐릭터')+'</button><button type="button" onclick="openSnsChatQuotePicker()">인용</button><button type="button" onclick="chooseSnsChatSide(\'narration\')">설명문</button><button type="button" onclick="chooseSnsChatSide(\'right\')">'+chatEsc(chatCharacters(r).find(c=>c.id===r.rightId)?.name||'오른쪽 캐릭터')+'</button></div>'+
       '<div class="meta" id="chatSelectedSide">'+chatEsc(chatSide==='narration'?'설명문':chatSide==='left'?(chatCharacters(r).find(c=>c.id===r.leftId)?.name||'왼쪽 캐릭터'):(chatCharacters(r).find(c=>c.id===r.rightId)?.name||'오른쪽 캐릭터'))+'</div><textarea id="chatNovelText" placeholder="대사 또는 설명문 작성...">'+chatEsc(chatDraft)+'</textarea><div id="chatQuotePending">'+chatQuoteCard(chatQuote)+'</div><button type="button" class="primary chatSubmit" onclick="saveSnsChatMessage()">작성</button></div>':'<div class="empty">새 채팅방을 만들어 창작 프로젝트를 연결해 주세요.</div>')+'</div>';
     const sel=document.getElementById('chatRoomSelect');try{if(sel)syncAppSelect(sel)}catch(_){}
-    const ta=document.getElementById('chatNovelText');if(ta){ta.oninput=()=>{chatDraft=ta.value};ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,200)});ta.addEventListener('blur',()=>setTimeout(()=>setSnsKeyboardState(snsKeyboardIsOpen()),180))}
-    chatHydrate();chatBindQuotePreviews();
+    const ta=document.getElementById('chatNovelText');if(ta){ta.oninput=()=>{chatDraft=ta.value;saveChatDraft()};ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,200)});ta.addEventListener('blur',()=>setTimeout(()=>setSnsKeyboardState(snsKeyboardIsOpen()),180))}
+    chatHydrate();chatBindQuotePreviews();chatBindLongPress();
   }
   const _originalSnsChatRender=window.renderSnsProject;
   window.renderSnsProject=function(){
@@ -12972,8 +12977,8 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
     const shell=snsHost()?.querySelector('.snsProjectShell');
     if(shell&&!shell.querySelector('.chatModeSwitch'))shell.insertAdjacentHTML('afterbegin','<div class="chatModeSwitch"><button type="button" class="primary">SNS 기록</button><button type="button" onclick="switchSnsChatMode(true)">채팅소설 만들기</button></div>');
   };
-  window.switchSnsChatMode=function(on){if(on===chatMode)return;chatMode=!!on;chatQuote=null;chatDraft='';setSnsKeyboardState(false);if(chatMode){if(!Array.isArray(db.snsChatRooms))db.snsChatRooms=[];if(!Array.isArray(db.snsChatMessages))db.snsChatMessages=[];chatRender()}else{window.renderSnsProject()}};
-  window.switchSnsChatRoom=function(id){if(!chatRooms().some(r=>r.id===id))return;chatRoomId=id;chatSide='left';chatDraft='';chatQuote=null;chatRender()};
+  window.switchSnsChatMode=function(on){if(on===chatMode)return;if(chatMode)saveChatDraft();chatMode=!!on;chatQuote=null;chatDraft=chatMode?loadChatDraft():'';setSnsKeyboardState(false);if(chatMode){if(!Array.isArray(db.snsChatRooms))db.snsChatRooms=[];if(!Array.isArray(db.snsChatMessages))db.snsChatMessages=[];chatRender()}else{window.renderSnsProject()}};
+  window.switchSnsChatRoom=function(id){if(!chatRooms().some(r=>r.id===id))return;saveChatDraft();chatRoomId=id;chatSide='left';chatDraft=loadChatDraft();chatQuote=null;chatRender()};
   window.openNewSnsChatRoom=function(){
     const projects=(db.projects||[]).filter(p=>chatCreativeTypes.includes(p.projectType));
     openModal('<div class="stack"><h2>새 채팅방</h2><input id="chatNewName" placeholder="채팅방 이름 (예: 1화)"><label>연결할 창작 프로젝트</label><select id="chatNewSource">'+projects.map(p=>'<option value="'+chatEsc(p.id)+'">'+chatEsc(p.name)+'</option>').join('')+'</select><div class="note">채팅방에 대화가 작성되면 연결 프로젝트는 변경할 수 없습니다.</div><div class="right"><button onclick="closeModal()">취소</button><button class="primary" onclick="createSnsChatRoom()">만들기</button></div></div>');
@@ -12985,6 +12990,8 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
     const r={id:uid(),project:currentProjectId,sourceProject,name,leftId:'',rightId:'',created:Date.now()};
     db.snsChatRooms.push(r);chatRoomId=r.id;chatDraft='';chatQuote=null;persist();closeModal();setTimeout(chatRender,210);
   };
+  function chatBindLongPress(){document.querySelectorAll('.chatNovelShell [data-chat-message-id]').forEach(el=>{let timer=null,x=0,y=0,triggered=false;const cancel=()=>{clearTimeout(timer);timer=null};el.addEventListener('touchstart',e=>{if(e.target.closest('.chatQuoteCard'))return;x=e.touches[0].clientX;y=e.touches[0].clientY;triggered=false;cancel();timer=setTimeout(()=>{triggered=true;chatMessageMenu(el.dataset.chatMessageId)},550)},{passive:true});el.addEventListener('touchmove',e=>{if(Math.abs(e.touches[0].clientX-x)>12||Math.abs(e.touches[0].clientY-y)>12)cancel()},{passive:true});el.addEventListener('touchend',cancel);el.addEventListener('touchcancel',cancel);el.addEventListener('contextmenu',e=>{e.preventDefault();cancel();if(!triggered)chatMessageMenu(el.dataset.chatMessageId)})})}
+  function chatMessageMenu(id){if(!db.snsChatMessages.some(x=>x.id===id&&x.project===currentProjectId))return;openModal('<div class="stack"><h2>채팅 관리</h2><button type="button" id="chatManageEdit">수정</button><button type="button" id="chatManageDelete">삭제</button><div class="right"><button type="button" onclick="closeModal()">닫기</button></div></div>');document.getElementById('chatManageEdit').onclick=()=>{closeModal();setTimeout(()=>editSnsChatMessage(id),200)};document.getElementById('chatManageDelete').onclick=()=>{closeModal();setTimeout(()=>deleteSnsChatMessage(id),200)}}
   function chatBindQuotePreviews(){document.querySelectorAll('.chatNovelShell [data-chat-preview-kind]').forEach(el=>{el.onclick=()=>window.openSnsQuote(el.dataset.chatPreviewKind,el.dataset.chatPreviewId)})}
   function chatEnsureVisible(){
     const el=document.querySelector('.chatNovelShell .chatComposer');if(!el)return;
@@ -12997,8 +13004,10 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
     const r=chatRoom();if(!r)return;
     chatDraft=document.getElementById('chatNovelText')?.value??chatDraft;
     if(side==='narration'){chatSide=side;chatRefresh(true);return}
-    const chars=chatCharacters(r);
-    openModal('<div class="stack"><h2>'+(side==='left'?'왼쪽':'오른쪽')+' 캐릭터</h2><div class="snsQuoteDocList">'+chars.map(c=>'<button type="button" class="snsQuoteDoc chatCharacterOption" data-character-id="'+chatEsc(c.id)+'">'+chatEsc(c.name||'이름 없음')+'</button>').join('')+'</div>'+(chars.length?'':'<div class="empty">등록된 캐릭터가 없습니다.</div>')+'<div class="right"><button onclick="closeModal()">닫기</button></div></div>');
+    const chars=chatCharacters(r),groups=(db.characterGroups||[]).filter(g=>g.project===r.sourceProject);
+    const names=[...new Set([...groups.map(g=>g.name),...chars.map(c=>c.group||'').filter(Boolean)])];
+    const groupBlock=name=>{const list=chars.filter(c=>(c.group||'')===name);return list.length?'<details class="snsQuoteCategory"><summary>'+chatEsc(name||'미분류')+' ('+list.length+')</summary><div class="snsQuoteDocList">'+list.map(c=>'<button type="button" class="snsQuoteDoc chatCharacterOption" data-character-id="'+chatEsc(c.id)+'">'+chatEsc(c.name||'이름 없음')+'</button>').join('')+'</div></details>':''};
+    openModal('<div class="stack"><h2>'+(side==='left'?'왼쪽':'오른쪽')+' 캐릭터</h2>'+names.map(groupBlock).join('')+groupBlock('')+(chars.length?'':'<div class="empty">등록된 캐릭터가 없습니다.</div>')+'<div class="right"><button onclick="closeModal()">닫기</button></div></div>');
     document.getElementById('modalCard').querySelectorAll('.chatCharacterOption').forEach(btn=>btn.addEventListener('click',()=>setSnsChatCharacter(side,btn.dataset.characterId)));
   };
   window.setSnsChatCharacter=function(side,id){
@@ -13027,7 +13036,7 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
     const c=chatCharacters(r).find(x=>x.id===r[chatSide+'Id']);
     if(chatSide!=='narration'&&!c)return alert('먼저 캐릭터를 선택해 주세요.');
     db.snsChatMessages.push({id:uid(),project:currentProjectId,roomId:r.id,side:chatSide,characterId:c?.id||'',characterName:c?.name||'',text,quote:chatQuote?{...chatQuote}:null,created:Date.now()});
-    chatDraft='';chatQuote=null;persist();const ta=document.getElementById('chatNovelText');if(ta)ta.value='';const pending=document.getElementById('chatQuotePending');if(pending)pending.innerHTML='';const timeline=document.querySelector('.chatNovelShell .chatTimeline');if(timeline){timeline.innerHTML=chatMessagesHtml(r);chatHydrate();chatBindQuotePreviews()}if(ta){ta.focus({preventScroll:true});requestAnimationFrame(()=>{chatEnsureVisible();setTimeout(chatEnsureVisible,120)})}
+    chatDraft='';chatQuote=null;persist();const ta=document.getElementById('chatNovelText');if(ta)ta.value='';saveChatDraft();const pending=document.getElementById('chatQuotePending');if(pending)pending.innerHTML='';const timeline=document.querySelector('.chatNovelShell .chatTimeline');if(timeline){timeline.innerHTML=chatMessagesHtml(r);chatHydrate();chatBindQuotePreviews();chatBindLongPress()}if(ta){ta.focus({preventScroll:true});requestAnimationFrame(()=>{chatEnsureVisible();setTimeout(chatEnsureVisible,120)})}
   };
   window.editSnsChatMessage=function(id){
     const m=db.snsChatMessages.find(x=>x.id===id&&x.project===currentProjectId);if(!m)return;
@@ -13036,9 +13045,9 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:relative!important
   window.saveSnsChatEdit=function(id){const m=db.snsChatMessages.find(x=>x.id===id&&x.project===currentProjectId);if(!m)return;const text=document.getElementById('chatEditText')?.value.trim()||'';if(!text&&!m.quote)return alert('내용을 입력해 주세요.');m.text=text;persist();closeModal();chatRender()};
   window.deleteSnsChatMessage=function(id){if(!confirm('이 대사를 삭제할까요?'))return;db.snsChatMessages=db.snsChatMessages.filter(x=>!(x.id===id&&x.project===currentProjectId));persist();chatRender()};
   const _openProjectChat=openProject;
-  openProject=async function(id){const r=await _openProjectChat.apply(this,arguments);chatMode=false;chatRoomId='';chatDraft='';chatQuote=null;return r};
+  openProject=async function(id){const r=await _openProjectChat.apply(this,arguments);saveChatDraft();chatMode=false;chatRoomId='';chatDraft='';chatQuote=null;return r};
   const _closeProjectChat=closeProject;
-  closeProject=function(){chatMode=false;chatRoomId='';chatDraft='';chatQuote=null;return _closeProjectChat.apply(this,arguments)};
+  closeProject=function(){if(chatMode)saveChatDraft();chatMode=false;chatRoomId='';chatDraft='';chatQuote=null;return _closeProjectChat.apply(this,arguments)};
 
   // SNS 프로젝트에서는 공용 '최근' 렌더가 타임라인을 덮어쓰지 않도록 최종 분기합니다.
   const _renderRecentForSns=renderRecent;
