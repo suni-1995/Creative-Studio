@@ -12889,6 +12889,22 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
     const ta=document.getElementById('snsComposerText');if(!ta)return;
     const vv=window.visualViewport;
     const top=vv?vv.offsetTop:0,bottom=vv?vv.offsetTop+vv.height:window.innerHeight;
+    // SNS records need scroll room for the whole composer on the first empty thread.
+    // Leave the working creative 썰 positioning unchanged.
+    if(currentProjectType()===SNS){
+      const composer=ta.closest('.snsComposer'),shell=composer?.closest('.snsProjectShell');
+      if(!composer||!shell)return;
+      const nav=document.getElementById('studioBottomNav');
+      const navRect=nav?.getBoundingClientRect();
+      const navVisible=nav&&getComputedStyle(nav).display!=='none'&&navRect?.height>0;
+      const limit=Math.min(bottom,navVisible?navRect.top:bottom)-8;
+      const rect=composer.getBoundingClientRect();
+      const room=Math.ceil(rect.height+(navVisible?navRect.height:0)+24);
+      shell.style.paddingBottom=room+'px';
+      const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
+      if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:'auto'});
+      return;
+    }
     const r=ta.getBoundingClientRect();
     // The entire composer, including the action buttons, must remain visible.
     const composer=ta.closest('.snsComposer');
@@ -15544,7 +15560,7 @@ body.studioDetail #projectView.studioWorkspaceDetail{
 body.snsKeyboardActive #projectSseol .snsComposer{position:sticky;bottom:6px}
 body.snsKeyboardActive #projectSseol .snsProjectShell{padding-bottom:24px}
 /* Match the working creative 썰 keyboard placement, without changing chat novels. */
-body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell) .snsComposer{position:sticky!important;bottom:calc(var(--studioNavClearance,100px) + 8px)!important}
+body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell) .snsComposer{position:relative!important;bottom:auto!important}
 </style>
 <script id="creativeSseolIntegration">
 (function(){
