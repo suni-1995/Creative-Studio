@@ -12892,8 +12892,9 @@ body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!im
     if(currentProjectType()===SNS){
       const composer=ta.closest('.snsComposer');if(!composer)return;
       const rect=composer.getBoundingClientRect();
-      const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
-      const limit=bottom-navHeight-10;
+      const nav=document.getElementById('studioBottomNav');
+      const navHeight=nav?.getBoundingClientRect().height||90;
+      const limit=Math.min(bottom-navHeight-10,nav?.getBoundingClientRect().top??bottom);
       const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
       if(Math.abs(delta)>2)window.scrollBy(0,delta);
       return;
@@ -13021,8 +13022,9 @@ body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!im
   function chatEnsureVisible(){
     const el=document.querySelector('.chatNovelShell .chatComposer');if(!el)return;
     const vv=window.visualViewport,top=vv?.offsetTop||0,bottom=top+(vv?.height||window.innerHeight),rect=el.getBoundingClientRect();
-    const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
-    const limit=bottom-navHeight-10;
+    const nav=document.getElementById('studioBottomNav');
+    const navHeight=nav?.getBoundingClientRect().height||90;
+    const limit=Math.min(bottom-navHeight-10,nav?.getBoundingClientRect().top??bottom);
     const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
     if(Math.abs(delta)>2)window.scrollBy(0,delta);
   }
@@ -15555,6 +15557,11 @@ body.snsKeyboardActive #projectSseol .snsProjectShell{padding-bottom:24px}
 /* Match the working creative 썰 keyboard placement, without changing chat novels. */
 body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell) .snsComposer{position:sticky!important;bottom:12px!important}
 body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell){padding-bottom:24px!important}
+/* Both SNS record and chat novel: reserve scroll room for the entire action row above the fixed project navigation. */
+body.snsKeyboardActive #projectRecent .snsProjectShell{padding-bottom:calc(var(--studioNavClearance,100px) + 24px)!important}
+body.snsKeyboardActive #projectRecent .snsComposer{scroll-margin-bottom:calc(var(--studioNavClearance,100px) + 12px)!important}
+body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{bottom:calc(var(--studioNavClearance,100px) + 8px)!important}
+body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell) .snsComposer{bottom:calc(var(--studioNavClearance,100px) + 8px)!important}
 </style>
 <script id="creativeSseolIntegration">
 (function(){
