@@ -12595,6 +12595,92 @@ const baseCss=pdfPrintCss;
 pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{display:block;break-before:auto!important;page-break-before:auto!important}.sseolPdfThread{margin-bottom:18px;break-inside:auto;break-before:auto!important;page-break-before:auto!important}.sseolPdfThread h3{margin-bottom:10px}.sseolPdfPost{border:1px solid #dedce3;border-radius:7px;background:#f7f6f8;padding:10px 12px;margin:0 0 9px;break-inside:auto;page-break-inside:auto}.sseolPdfImage{margin-top:8px;break-inside:avoid;page-break-inside:avoid}.sseolPdfImage img{display:block;max-height:300px;height:auto;width:auto;max-width:100%;object-fit:contain}.sseolPdfNumber{font-size:8pt;color:#777582;margin-bottom:5px}.sseolPdfText{font-size:9.6pt;line-height:1.65;overflow-wrap:anywhere}.sseolPdfNote,.sseolPdfTime{font-size:8pt;color:#777582;margin-top:7px}'};
 })();
 </script>
+
+<style id="snsChatTrashQuotePolish">
+body.snsChatTrashProject #backupTrash .backupTrashNav{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+body.snsChatTrashProject #backupTrash .backupTrashNav button{min-width:0!important;padding:12px 4px!important;font-size:12px!important;white-space:normal!important}
+#snsChatTrashPanel .snsThreadTrashRow{display:flex;align-items:center;gap:14px;padding:18px 16px;border:1px solid var(--line);border-radius:16px;background:var(--card);cursor:pointer}
+#snsChatTrashPanel .snsThreadTrashRow input{flex-shrink:0}
+#snsChatTrashPanel .snsThreadTrashName{display:block;font-weight:800}
+#snsChatTrashPanel .trashScopeNote{margin:12px 0 18px}
+.snsQuoteDetailPolished{display:flex;flex-direction:column;gap:15px;max-height:min(78dvh,760px);min-height:0}
+.snsQuoteDetailPolished .snsQuoteDetailHeader{padding-bottom:14px;border-bottom:1px solid var(--line)}
+.snsQuoteDetailPolished .snsQuoteDetailTitle{font-size:21px;font-weight:850;line-height:1.4;overflow-wrap:anywhere}
+.snsQuoteDetailPolished .snsQuoteDetailMeta{margin-top:7px;color:var(--muted);font-size:13px}
+.snsQuoteDetailPolished .snsQuoteDetailContent{min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px}
+.snsQuoteDetailPolished .snsQuoteDetailLabel{font-size:13px;font-weight:800;color:var(--muted)}
+.snsQuoteDetailPolished .snsQuoteDetailBody{padding:16px;border-radius:14px;background:var(--soft);border:1px solid var(--line);line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere}
+.snsQuoteDetailPolished .snsQuoteDetailActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto;padding-top:8px}
+.snsQuoteDetailPolished .snsQuoteDetailActions button{min-width:0}
+</style>
+<script id="snsChatTrashQuotePolishScript">
+(function(){
+ const nav=document.querySelector('#backupTrash .backupTrashNav');
+ const trash=document.getElementById('trash');
+ const trashTab=document.getElementById('backupTrashTrashBtn');
+ if(!nav||!trash||!trashTab||document.getElementById('snsChatTrashBtn'))return;
+ const isSns=()=>!!currentProjectId&&currentProjectType()==='sns';
+ const chatBtn=document.createElement('button');chatBtn.type='button';chatBtn.id='snsChatTrashBtn';chatBtn.textContent='채팅 소설 삭제';chatBtn.className='hidden';trashTab.after(chatBtn);
+ const panel=document.createElement('div');panel.id='snsChatTrashPanel';panel.className='hidden';
+ panel.innerHTML='<div class="toolbar"><h2>채팅 소설 삭제</h2><button type="button" class="danger" id="snsChatTrashDelete">선택 삭제</button></div><div class="trashScopeNote">삭제할 채팅 소설을 선택해 주세요. 채팅방을 삭제하면 해당 대화 기록도 함께 삭제됩니다.</div><div id="snsChatTrashRows" class="stack"></div>';
+ trash.after(panel);
+ const render=()=>{
+  const rooms=(db.snsChatRooms||[]).filter(r=>r.project===currentProjectId);
+  document.getElementById('snsChatTrashRows').innerHTML=rooms.length?rooms.map(r=>{
+   const count=(db.snsChatMessages||[]).filter(m=>m.project===currentProjectId&&m.roomId===r.id).length;
+   return '<label class="snsThreadTrashRow"><input type="checkbox" name="snsChatTrashPick" value="'+esc(r.id)+'"><span><span class="snsThreadTrashName">'+esc(r.name||'이름 없는 채팅방')+'</span><div class="meta">'+count+'개 대화 · 생성 '+fmt(r.created)+'</div></span></label>';
+  }).join(''):'<div class="empty">삭제할 채팅 소설이 없습니다.</div>';
+ };
+ const sync=()=>{
+  const on=isSns();document.body.classList.toggle('snsChatTrashProject',on);
+  chatBtn.classList.toggle('hidden',!on);
+  if(!on){panel.classList.add('hidden');chatBtn.classList.remove('active')}
+ };
+ const previousOpen=window.openBackupTrashPane;
+ window.openBackupTrashPane=function(which){
+  sync();
+  if(which==='snsChatTrash'&&isSns()){
+   document.getElementById('export')?.classList.add('hidden');
+   trash.classList.add('hidden');
+   document.getElementById('creativeThreadManager')?.classList.add('hidden');
+   document.getElementById('backupTrashExportBtn')?.classList.remove('active');
+   trashTab.classList.remove('active');
+   document.getElementById('creativeThreadManageBtn')?.classList.remove('active');
+   panel.classList.remove('hidden');chatBtn.classList.add('active');render();return;
+  }
+  panel.classList.add('hidden');chatBtn.classList.remove('active');
+  return previousOpen.apply(this,arguments);
+ };
+ chatBtn.addEventListener('click',()=>window.openBackupTrashPane('snsChatTrash'));
+ document.getElementById('snsChatTrashDelete').addEventListener('click',()=>{
+  if(!isSns())return;
+  const ids=new Set([...panel.querySelectorAll('input[name="snsChatTrashPick"]:checked')].map(x=>x.value));
+  if(!ids.size)return alert('삭제할 채팅 소설을 선택해 주세요.');
+  const rooms=(db.snsChatRooms||[]).filter(r=>r.project===currentProjectId&&ids.has(r.id));
+  if(!rooms.length)return render();
+  const count=(db.snsChatMessages||[]).filter(m=>m.project===currentProjectId&&ids.has(m.roomId)).length;
+  if(!confirm('선택한 '+rooms.length+'개 채팅 소설과 대화 '+count+'개를 삭제할까요?'))return;
+  db.snsChatRooms=db.snsChatRooms.filter(r=>!(r.project===currentProjectId&&ids.has(r.id)));
+  db.snsChatMessages=(db.snsChatMessages||[]).filter(m=>!(m.project===currentProjectId&&ids.has(m.roomId)));
+  for(const id of ids)try{localStorage.removeItem('creativeStudio:chatDraft:'+currentProjectId+':'+id)}catch(_){}
+  persist();render();
+ });
+ const oldOpenProject=window.openProject;
+ window.openProject=async function(){const result=await oldOpenProject.apply(this,arguments);sync();return result};
+ const oldCloseProject=window.closeProject;
+ window.closeProject=function(){const result=oldCloseProject.apply(this,arguments);sync();return result};
+ const oldQuote=window.openSnsQuote;
+ window.openSnsQuote=function(kind,id){
+  const x=(db[kind]||[]).find(v=>v.id===id);
+  if(!x)return alert('인용 원본을 찾을 수 없습니다.');
+  const pr=projectById(x.project),title=quoteTitle(kind,x);
+  let body='';try{body=typeof itemText==='function'?itemText(kind,x):quoteSnippet(kind,x)}catch(_){body=quoteSnippet(kind,x)}
+  openModal('<div class="snsQuoteDetailPolished"><div class="snsQuoteDetailHeader"><div class="snsQuoteDetailTitle">'+esc(title)+'</div><div class="snsQuoteDetailMeta">'+esc(pr?.name||'프로젝트 없음')+' · '+esc(quoteKindLabel(kind))+'</div></div><div class="snsQuoteDetailContent"><div class="snsQuoteDetailLabel">인용 원본</div><div class="snsQuoteDetailBody">'+esc(String(body||'').trim()||'내용 없음')+'</div></div><div class="snsQuoteDetailActions"><button type="button" onclick="closeModal()">닫기</button><button type="button" class="primary" id="snsQuoteDetailGo">해당 항목으로 이동</button></div></div>');
+  document.getElementById('snsQuoteDetailGo')?.addEventListener('click',()=>window.goToSnsQuoteSource(kind,id));
+ };
+ sync();
+})();
+</script>
 </body>
 </html>
 
