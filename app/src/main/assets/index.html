@@ -13061,7 +13061,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
   let chatMode=false,chatRoomId='',chatSide='left',chatQuote=null,chatDraft='';
   const chatDraftKey=(pid,rid)=>'creativeStudio:chatDraft:'+pid+':'+rid;
   function saveChatDraft(){const room=chatRoom();if(!room)return;const ta=document.getElementById('chatNovelText');if(ta)chatDraft=ta.value;try{if(chatDraft)localStorage.setItem(chatDraftKey(currentProjectId,room.id),chatDraft);else localStorage.removeItem(chatDraftKey(currentProjectId,room.id))}catch(_){}}
-  function loadChatDraft(){const room=chatRoom();if(!room)return '';try{return localStorage.getItem(chatDraftKey(currentProjectId,room.id))||''}catch(_){return ''}}
+  function loadChatDraft(roomId){const room=roomId?chatRooms().find(r=>r.id===roomId):chatRoom();if(!room)return '';try{return localStorage.getItem(chatDraftKey(currentProjectId,room.id))||''}catch(_){return ''}}
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&chatMode)saveChatDraft()});
   window.addEventListener('pagehide',()=>{if(chatMode)saveChatDraft()});
   const chatRooms=()=>db.snsChatRooms.filter(r=>r.project===currentProjectId);
@@ -13087,7 +13087,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
   }
   function chatRender(){
     const host=snsHost();if(!host||currentProjectType()!==SNS)return;
-    const rooms=chatRooms(),r=chatRoom();if(r)chatRoomId=r.id;
+    const rooms=chatRooms(),r=chatRoom();if(r){if(chatRoomId!==r.id){chatRoomId=r.id;chatDraft=loadChatDraft(r.id)}else if(!chatDraft&&!document.getElementById('chatNovelText'))chatDraft=loadChatDraft(r.id);}
     host.innerHTML='<div class="snsProjectShell chatNovelShell"><div class="chatModeSwitch"><button type="button" onclick="switchSnsChatMode(false)">SNS 기록</button><button type="button" class="primary">채팅소설 만들기</button></div>'+
       '<div class="snsTopArea"><h2 style="margin:0">채팅소설</h2><div class="meta">채팅방마다 하나의 창작 프로젝트를 연결합니다.</div></div>'+
       '<div class="snsThreadBar"><select id="chatRoomSelect" onchange="switchSnsChatRoom(this.value)">'+(rooms.length?rooms.map(x=>'<option value="'+chatEsc(x.id)+'" '+(x.id===r?.id?'selected':'')+'>'+chatEsc(x.name)+'</option>').join(''):'<option value="">채팅방 없음</option>')+'</select><button type="button" onclick="openNewSnsChatRoom()">＋ 새 채팅방</button></div>'+
@@ -13106,8 +13106,8 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
     const shell=snsHost()?.querySelector('.snsProjectShell');
     if(shell&&!shell.querySelector('.chatModeSwitch'))shell.insertAdjacentHTML('afterbegin','<div class="chatModeSwitch"><button type="button" class="primary">SNS 기록</button><button type="button" onclick="switchSnsChatMode(true)">채팅소설 만들기</button></div>');
   };
-  window.switchSnsChatMode=function(on){if(on===chatMode)return;if(chatMode)saveChatDraft();if(on){if(!Array.isArray(db.snsChatRooms))db.snsChatRooms=[];if(!Array.isArray(db.snsChatMessages))db.snsChatMessages=[];}chatMode=!!on;chatQuote=null;chatDraft=chatMode?loadChatDraft():'';setSnsKeyboardState(false);if(chatMode)chatRender();else window.renderSnsProject()};
-  window.switchSnsChatRoom=function(id){if(!chatRooms().some(r=>r.id===id))return;saveChatDraft();chatRoomId=id;chatSide='left';chatDraft=loadChatDraft();chatQuote=null;chatRender()};
+  window.switchSnsChatMode=function(on){if(on===chatMode)return;if(chatMode)saveChatDraft();if(on){if(!Array.isArray(db.snsChatRooms))db.snsChatRooms=[];if(!Array.isArray(db.snsChatMessages))db.snsChatMessages=[];}chatMode=!!on;chatQuote=null;chatDraft=chatMode?loadChatDraft(chatRoom()?.id):'';setSnsKeyboardState(false);if(chatMode)chatRender();else window.renderSnsProject()};
+  window.switchSnsChatRoom=function(id){if(!chatRooms().some(r=>r.id===id))return;saveChatDraft();chatRoomId=id;chatSide='left';chatDraft=loadChatDraft(id);chatQuote=null;chatRender()};
   window.openNewSnsChatRoom=function(){
     const projects=(db.projects||[]).filter(p=>chatCreativeTypes.includes(p.projectType));
     openModal('<div class="stack"><h2>새 채팅방</h2><input id="chatNewName" placeholder="채팅방 이름 (예: 1화)"><label>연결할 창작 프로젝트</label><select id="chatNewSource">'+projects.map(p=>'<option value="'+chatEsc(p.id)+'">'+chatEsc(p.name)+'</option>').join('')+'</select><div class="note">채팅방에 대화가 작성되면 연결 프로젝트는 변경할 수 없습니다.</div><div class="right"><button onclick="closeModal()">취소</button><button class="primary" onclick="createSnsChatRoom()">만들기</button></div></div>');
