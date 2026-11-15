@@ -12935,7 +12935,7 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
     host.innerHTML=`<div class="snsProjectShell"><div class="snsTopArea"><h2 style="margin:0 0 4px">${isSseol()?'썰':'SNS 기록'}</h2><div class="meta">타래를 나눠 기록하고, 글에서 다른 타래로 자유롭게 이동할 수 있습니다.</div></div><div class="snsThreadBar"><select id="snsThreadSelect" onchange="switchSnsThread(this.value)">${threads.map(t=>`<option value="${t.id}" ${t.id===currentThread.id?'selected':''}>${esc(t.name||'이름 없는 타래')}</option>`).join('')}</select><button type="button" onclick="openNewSnsThread()">＋ 새 타래</button></div><div class="snsTimeline">${posts.length?posts.map(snsPostHtml).join(''):'<div class="empty">이 타래에는 아직 기록이 없습니다. 아래에서 첫 기록을 남겨보세요.</div>'}</div><div class="snsComposer"><textarea id="snsComposerText" placeholder="기록을 남겨보세요...">${esc(pendingDraft)}</textarea>${pendingQuote?quoteHtml(pendingQuote,true):''}${pendingThreadLink?threadLinkHtml(pendingThreadLink,true):''}${snsPendingImageHtml()}<div class="snsComposerActions"><button type="button" class="snsQuoteBtn" onclick="openSnsQuotePicker()">＋ 자료 인용</button><button type="button" onclick="openSnsImagePicker()">▧ 이미지</button><button type="button" onclick="openSnsThreadLinkPicker()">↗ 타래 연결</button><button type="button" class="primary" onclick="saveSnsPost()">작성</button></div></div></div>`;
     try{syncAppSelect(document.getElementById('snsThreadSelect'))}catch(_){ }
     const nav=document.getElementById('studioBottomNav');host.querySelector('.snsProjectShell')?.style.setProperty('--studioNavClearance',(nav?.getBoundingClientRect().height||90)+'px');
-    const ta=document.getElementById('snsComposerText');if(ta){ta.oninput=()=>{pendingDraft=ta.value;storeSnsDraft()};ta.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText'&&document.activeElement?.id!=='chatNovelText')setSnsKeyboardState(snsKeyboardIsOpen())},180)});ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(()=>requestAnimationFrame(()=>{settleSnsComposerView();updateSnsJumpTopState()}))})}hydrateSnsImages(host);requestAnimationFrame(updateSnsJumpTopState)
+    const ta=document.getElementById('snsComposerText');if(ta){ta.oninput=()=>{pendingDraft=ta.value;storeSnsDraft()};ta.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText'&&document.activeElement?.id!=='chatNovelText')setSnsKeyboardState(snsKeyboardIsOpen())},180)});ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(()=>requestAnimationFrame(()=>{settleSnsComposerView();updateSnsJumpTopState()}));setTimeout(settleSnsComposerView,180);setTimeout(settleSnsComposerView,350)})}hydrateSnsImages(host);requestAnimationFrame(updateSnsJumpTopState)
     const blurComposer=ev=>{if(!ev.target.closest('.snsComposer')){document.getElementById('snsComposerText')?.blur();setSnsKeyboardState(false)}};
     host.querySelector('.snsTopArea')?.addEventListener('pointerdown',blurComposer);host.querySelector('.snsThreadBar')?.addEventListener('pointerdown',blurComposer);host.querySelector('.snsTimeline')?.addEventListener('pointerdown',blurComposer);
     host.querySelector('.snsTopArea')?.addEventListener('touchstart',blurComposer,{passive:true});host.querySelector('.snsTimeline')?.addEventListener('touchmove',blurComposer,{passive:true});
@@ -13017,6 +13017,13 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
     const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
     if(Math.abs(delta)>2)window.scrollBy(0,delta);
   }
+  function chatRevealLatest(){
+    const timeline=document.querySelector('.chatNovelShell .chatTimeline');
+    const latest=timeline?.lastElementChild,composer=document.querySelector('.chatNovelShell .chatComposer');
+    if(!latest||!composer)return;
+    const gap=12,delta=latest.getBoundingClientRect().bottom-(composer.getBoundingClientRect().top-gap);
+    if(delta>2)window.scrollBy({top:delta,behavior:'auto'});
+  }
   function chatRefresh(focus){chatRender();if(focus){document.getElementById('chatNovelText')?.focus({preventScroll:true});requestAnimationFrame(chatEnsureVisible)}}
   window.chooseSnsChatSide=function(side){
     const r=chatRoom();if(!r)return;
@@ -13056,7 +13063,7 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
     const c=chatCharacters(r).find(x=>x.id===r[chatSide+'Id']);
     if(chatSide!=='narration'&&!c)return alert('먼저 캐릭터를 선택해 주세요.');
     db.snsChatMessages.push({id:uid(),project:currentProjectId,roomId:r.id,side:chatSide,characterId:c?.id||'',characterName:c?.name||'',text,quote:chatQuote?{...chatQuote}:null,created:Date.now()});
-    chatDraft='';chatQuote=null;persist();const ta=document.getElementById('chatNovelText');if(ta)ta.value='';saveChatDraft();const pending=document.getElementById('chatQuotePending');if(pending)pending.innerHTML='';const timeline=document.querySelector('.chatNovelShell .chatTimeline');if(timeline){timeline.innerHTML=chatMessagesHtml(r);chatHydrate();chatBindQuotePreviews();chatBindLongPress()}if(ta){ta.focus({preventScroll:true});requestAnimationFrame(()=>{chatEnsureVisible();setTimeout(chatEnsureVisible,120)})}
+    chatDraft='';chatQuote=null;persist();const ta=document.getElementById('chatNovelText');if(ta)ta.value='';saveChatDraft();const pending=document.getElementById('chatQuotePending');if(pending)pending.innerHTML='';const timeline=document.querySelector('.chatNovelShell .chatTimeline');if(timeline){timeline.innerHTML=chatMessagesHtml(r);chatHydrate();chatBindQuotePreviews();chatBindLongPress()}if(ta){ta.focus({preventScroll:true});requestAnimationFrame(()=>{chatEnsureVisible();chatRevealLatest();setTimeout(()=>{chatEnsureVisible();chatRevealLatest()},120)})}
   };
   window.editSnsChatMessage=function(id){
     const m=db.snsChatMessages.find(x=>x.id===id&&x.project===currentProjectId);if(!m)return;
