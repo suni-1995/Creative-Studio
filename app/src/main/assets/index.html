@@ -12957,7 +12957,7 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
     const shell=snsHost()?.querySelector('.snsProjectShell');
     if(shell&&!shell.querySelector('.chatModeSwitch'))shell.insertAdjacentHTML('afterbegin','<div class="chatModeSwitch"><button type="button" class="primary">SNS 기록</button><button type="button" onclick="switchSnsChatMode(true)">채팅소설 만들기</button></div>');
   };
-  window.switchSnsChatMode=function(on){if(on===chatMode)return;chatMode=!!on;chatQuote=null;chatDraft='';setSnsKeyboardState(false);renderSnsProject()};
+  window.switchSnsChatMode=function(on){if(on===chatMode)return;chatMode=!!on;chatQuote=null;chatDraft='';setSnsKeyboardState(false);if(chatMode){if(!Array.isArray(db.snsChatRooms))db.snsChatRooms=[];if(!Array.isArray(db.snsChatMessages))db.snsChatMessages=[];chatRender()}else{window.renderSnsProject()}};
   window.switchSnsChatRoom=function(id){if(!chatRooms().some(r=>r.id===id))return;chatRoomId=id;chatSide='left';chatDraft='';chatQuote=null;chatRender()};
   window.openNewSnsChatRoom=function(){
     const projects=(db.projects||[]).filter(p=>chatCreativeTypes.includes(p.projectType));
