@@ -14108,6 +14108,9 @@ body.studioProjectMusicContext #music .musicPage,body.studioProjectMusicContext 
 <style id="studioRound15NavVisibility">
 body.studioDetail #studioBottomNav[data-project-menu="yes"]{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;z-index:210}
 body.studioDetail.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!important}
+/* SNS thread only: the keyboard owns the bottom area, not the project menu. */
+body.studioDetail.snsKeyboardActive:has(#projectRecent .snsProjectShell.snsKeyboardOpen) #studioBottomNav[data-project-menu="yes"]{display:none!important;visibility:hidden!important}
+body.snsKeyboardActive #projectRecent .snsProjectShell.snsKeyboardOpen .snsComposer{position:sticky!important;bottom:8px!important;scroll-margin-bottom:12px!important}
 body.snsKeyboardActive #projectRecent .snsComposer{position:sticky;bottom:6px}
 body.snsKeyboardActive #projectRecent .snsProjectShell{padding-bottom:24px}
 body.studioDetail .wrap{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}
