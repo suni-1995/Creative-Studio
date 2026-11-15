@@ -12900,7 +12900,7 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
       const limit=Math.min(bottom,navVisible?navRect.top:bottom)-8;
       const rect=composer.getBoundingClientRect();
       // Keep enough scroll room, but do not leave a full composer-sized blank area.
-      shell.style.paddingBottom='24px';
+      shell.style.paddingBottom='0px';
       // Align the action buttons just above the navigation, in either direction.
       const delta=rect.bottom-limit;
       if(Math.abs(delta)>2&&rect.height<limit-top-8)window.scrollBy({top:delta,behavior:'auto'});
@@ -15562,6 +15562,7 @@ body.snsKeyboardActive #projectSseol .snsComposer{position:sticky;bottom:6px}
 body.snsKeyboardActive #projectSseol .snsProjectShell{padding-bottom:24px}
 /* Match the working creative 썰 keyboard placement, without changing chat novels. */
 body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell) .snsComposer{position:relative!important;bottom:auto!important}
+body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell){padding-bottom:0!important}
 </style>
 <script id="creativeSseolIntegration">
 (function(){
