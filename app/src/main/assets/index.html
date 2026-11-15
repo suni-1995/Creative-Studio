@@ -15543,6 +15543,8 @@ body.studioDetail #projectView.studioWorkspaceDetail{
 <style id="creativeSseolStyles">
 body.snsKeyboardActive #projectSseol .snsComposer{position:sticky;bottom:6px}
 body.snsKeyboardActive #projectSseol .snsProjectShell{padding-bottom:24px}
+/* Match the working creative 썰 keyboard placement, without changing chat novels. */
+body.snsKeyboardActive #projectRecent .snsProjectShell:not(.chatNovelShell) .snsComposer{position:sticky!important;bottom:6px!important}
 </style>
 <script id="creativeSseolIntegration">
 (function(){
