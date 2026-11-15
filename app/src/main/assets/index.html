@@ -12887,25 +12887,30 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
   if(!window.__snsJumpTopBound){window.__snsJumpTopBound=true;window.addEventListener('scroll',()=>{if(snsEditorActive())updateSnsJumpTopState()},{passive:true});window.addEventListener('resize',()=>{if(snsEditorActive())updateSnsJumpTopState()},{passive:true})}
   function ensureSnsComposerVisible(smooth=false){
     const ta=document.getElementById('snsComposerText');if(!ta)return;
-    const vv=window.visualViewport;
-    const top=vv?vv.offsetTop:0,bottom=vv?vv.offsetTop+vv.height:window.innerHeight;
-    const r=ta.getBoundingClientRect();
-    // The entire composer, including the action buttons, must remain visible.
-    const composer=ta.closest('.snsComposer');
-    const keyboardOpen=snsKeyboardIsOpen()&&document.activeElement===ta;
-    const shell=composer?.closest('.snsProjectShell');
-    if(keyboardOpen&&composer&&shell){
-      // Provide scroll room on the first, otherwise short, empty thread.
-      shell.style.paddingBottom=(composer.getBoundingClientRect().height+20)+'px';
+    const composer=ta.closest('.snsComposer'),shell=composer?.closest('.snsProjectShell');
+    if(!composer||!shell)return;
+    const active=document.activeElement===ta&&snsKeyboardIsOpen();
+    if(active){
+      const vv=window.visualViewport;
+      const viewportTop=vv?vv.offsetTop:0;
+      const viewportBottom=vv?vv.offsetTop+vv.height:window.innerHeight;
+      const shellRect=shell.getBoundingClientRect();
+      const height=composer.getBoundingClientRect().height;
+      shell.style.paddingBottom=(height+20)+'px';
       composer.style.removeProperty('margin-top');
+      composer.style.setProperty('position','fixed','important');
+      composer.style.setProperty('bottom','auto','important');
+      composer.style.setProperty('top',Math.max(viewportTop+4,viewportBottom-height-8)+'px','important');
+      composer.style.setProperty('left',shellRect.left+'px','important');
+      composer.style.setProperty('width',shellRect.width+'px','important');
+      return;
     }
+    const r=composer.getBoundingClientRect();
+    const vv=window.visualViewport,bottom=vv?vv.offsetTop+vv.height:window.innerHeight;
     const nav=document.getElementById('studioBottomNav');
-    const navVisible=nav&&getComputedStyle(nav).display!=='none'&&getComputedStyle(nav).visibility!=='hidden'&&nav.getClientRects().length>0;
-    const navTop=navVisible?nav.getBoundingClientRect().top:bottom;
-    const limit=Math.min(bottom,navTop)-8;
-    const updated=composer?.getBoundingClientRect()||r;
-    const delta=updated.bottom>limit?updated.bottom-limit:updated.top<top+8?updated.top-(top+8):0;
-    if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:smooth?'smooth':'auto'});
+    const navVisible=nav&&getComputedStyle(nav).display!=='none'&&nav.getClientRects().length>0;
+    const limit=Math.min(bottom,navVisible?nav.getBoundingClientRect().top:bottom)-8;
+    if(r.bottom>limit+2)window.scrollBy({top:r.bottom-limit,behavior:smooth?'smooth':'auto'});
   }
   // Keep the newest post visible immediately above the sticky composer after publishing.
   function revealLatestSnsPost(){
@@ -14110,7 +14115,7 @@ body.studioDetail #studioBottomNav[data-project-menu="yes"]{display:grid!importa
 body.studioDetail.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!important}
 /* SNS thread only: the keyboard owns the bottom area, not the project menu. */
 body.studioDetail.snsKeyboardActive:has(#projectRecent .snsProjectShell.snsKeyboardOpen) #studioBottomNav[data-project-menu="yes"]{display:none!important;visibility:hidden!important}
-body.snsKeyboardActive #projectRecent .snsProjectShell.snsKeyboardOpen .snsComposer{position:sticky!important;bottom:8px!important;scroll-margin-bottom:12px!important}
+body.snsKeyboardActive #projectRecent .snsProjectShell.snsKeyboardOpen .snsComposer{position:fixed!important;bottom:auto!important;scroll-margin-bottom:12px!important}
 body.snsKeyboardActive #projectRecent .snsComposer{position:sticky;bottom:6px}
 body.snsKeyboardActive #projectRecent .snsProjectShell{padding-bottom:24px}
 body.studioDetail .wrap{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}
