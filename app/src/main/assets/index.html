@@ -12606,7 +12606,7 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
 <style id="fix29SnsStyles">
 .snsProjectShell{display:grid;gap:14px;max-width:860px;margin:0 auto}
 .snsComposer{display:grid;gap:9px;padding:13px;border:1px solid var(--line);border-radius:16px;background:var(--card);position:sticky;bottom:calc(var(--studioNavClearance, 100px) + 8px);z-index:3;box-shadow:0 8px 28px color-mix(in srgb,var(--ink) 8%,transparent);scroll-margin-bottom:12px}.snsProjectShell.snsKeyboardOpen{padding-bottom:24px}.snsProjectShell.snsKeyboardOpen .snsComposer{position:sticky;bottom:6px;scroll-margin-bottom:14px}.snsProjectShell.snsKeyboardOpen .snsComposer textarea{min-height:64px;max-height:var(--snsEditorMaxHeight,100px)}body.snsProjectActive #scrollTopBtn{display:none!important}
-.snsComposer textarea{min-height:86px;max-height:180px;resize:vertical}
+.snsComposer textarea{min-height:86px;max-height:180px;resize:vertical}body.snsKeyboardActive #projectRecent .snsComposer{position:sticky;bottom:calc(var(--studioNavClearance, 100px) + 8px)}body.snsKeyboardActive #projectRecent .snsProjectShell{padding-bottom:24px}
 .snsComposerActions{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
 .snsComposerActions .snsQuoteBtn{margin-right:auto}
 .snsPostImages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;border-radius:12px;overflow:hidden}
@@ -12684,13 +12684,14 @@ pdfPrintCss=function(){return baseCss.apply(this,arguments)+'.sseolPdfContents{d
 .chatSideButtons button{min-width:0;font-size:11px;padding:7px 3px;overflow-wrap:anywhere}
 .chatComposer{position:sticky}
 body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!important;visibility:visible!important}
-
+body.snsKeyboardActive #projectRecent .snsComposer{bottom:calc(var(--studioNavClearance,100px) + 8px)!important}
 .chatNovelShell .chatSubmit{width:100%;min-height:44px}
 .chatNovelShell .chatComposer{bottom:calc(var(--studioNavClearance,100px) + 12px)}
 .chatNovelShell.snsKeyboardOpen .chatComposer{bottom:12px!important}
 
 /* Keep the project navigation outside the keyboard viewport, with a compact editor. */
-
+body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!important;visibility:visible!important}
+body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;bottom:calc(var(--studioNavClearance,100px) + 8px)!important;scroll-margin-bottom:12px!important}
 .chatNovelShell .chatComposer{position:sticky!important;bottom:calc(var(--studioNavClearance,100px) + 8px)!important;gap:6px!important}
 .chatQuickCharacter{display:grid;gap:6px;margin:0 0 8px}
 /* Compact only the chat character picker; keep general quote lists unchanged. */
@@ -12888,11 +12889,15 @@ body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!im
     const ta=document.getElementById('snsComposerText');if(!ta)return;
     const vv=window.visualViewport;
     const top=vv?vv.offsetTop:0,bottom=vv?vv.offsetTop+vv.height:window.innerHeight;
+    // SNS records need scroll room for the whole composer on the first empty thread.
+    // Leave the working creative 썰 positioning unchanged.
     if(currentProjectType()===SNS){
-      const composer=ta.closest('.snsComposer');if(!composer)return;
+      const composer=ta.closest('.snsComposer'),shell=composer?.closest('.snsProjectShell');
+      if(!composer||!shell)return;
       const rect=composer.getBoundingClientRect();
       const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
       const limit=bottom-navHeight-10;
+      // Use the same visibility-only scroll correction as chat novels.
       const delta=rect.bottom>limit?rect.bottom-limit:rect.top<top+8?rect.top-(top+8):0;
       if(Math.abs(delta)>2)window.scrollBy(0,delta);
       return;
@@ -12924,11 +12929,11 @@ body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!im
     const delta=postRect.bottom-(composerRect.top-12);
     if(delta>2)window.scrollBy({top:delta,behavior:'auto'});
   }
-  function settleSnsComposerView(){if(!snsEditorActive()||document.activeElement?.id!=='snsComposerText'||!snsKeyboardIsOpen())return;ensureSnsComposerVisible()}
+  function settleSnsComposerView(){if(!snsEditorActive()||document.activeElement?.id!=='snsComposerText'||!snsKeyboardIsOpen())return;setSnsKeyboardState(true);requestAnimationFrame(()=>ensureSnsComposerVisible());setTimeout(()=>ensureSnsComposerVisible(),160)}
   if(window.visualViewport&&!window.__snsViewportBound){
     window.__snsViewportBound=true;
-    window.visualViewport.addEventListener('resize',()=>{if(!snsEditorActive())return;const focused=document.activeElement?.id==='snsComposerText',chatFocused=document.activeElement?.id==='chatNovelText';const keyboardOpen=snsKeyboardIsOpen()||focused||chatFocused;setSnsKeyboardState(keyboardOpen);if(focused&&keyboardOpen){requestAnimationFrame(ensureSnsComposerVisible);setTimeout(ensureSnsComposerVisible,100)}if(chatFocused&&keyboardOpen){requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,100)}});
-    
+    window.visualViewport.addEventListener('resize',()=>{if(!snsEditorActive())return;const focused=document.activeElement?.id==='snsComposerText',chatFocused=document.activeElement?.id==='chatNovelText';const keyboardOpen=snsKeyboardIsOpen()||focused||chatFocused;setSnsKeyboardState(keyboardOpen);if(focused&&keyboardOpen)settleSnsComposerView();if(chatFocused&&keyboardOpen){requestAnimationFrame(chatEnsureVisible);setTimeout(chatEnsureVisible,100)}});
+    window.visualViewport.addEventListener('scroll',()=>{if(snsEditorActive()&&document.activeElement?.id==='snsComposerText')ensureSnsComposerVisible()},{passive:true});
   }
 
   window.renderSnsProject=function(){
@@ -12943,7 +12948,7 @@ body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!im
     host.innerHTML=`<div class="snsProjectShell"><div class="snsTopArea"><h2 style="margin:0 0 4px">${isSseol()?'썰':'SNS 기록'}</h2><div class="meta">타래를 나눠 기록하고, 글에서 다른 타래로 자유롭게 이동할 수 있습니다.</div></div><div class="snsThreadBar"><select id="snsThreadSelect" onchange="switchSnsThread(this.value)">${threads.map(t=>`<option value="${t.id}" ${t.id===currentThread.id?'selected':''}>${esc(t.name||'이름 없는 타래')}</option>`).join('')}</select><button type="button" onclick="openNewSnsThread()">＋ 새 타래</button></div><div class="snsTimeline">${posts.length?posts.map(snsPostHtml).join(''):'<div class="empty">이 타래에는 아직 기록이 없습니다. 아래에서 첫 기록을 남겨보세요.</div>'}</div><div class="snsComposer"><textarea id="snsComposerText" placeholder="기록을 남겨보세요...">${esc(pendingDraft)}</textarea>${pendingQuote?quoteHtml(pendingQuote,true):''}${pendingThreadLink?threadLinkHtml(pendingThreadLink,true):''}${snsPendingImageHtml()}<div class="snsComposerActions"><button type="button" class="snsQuoteBtn" onclick="openSnsQuotePicker()">＋ 자료 인용</button><button type="button" onclick="openSnsImagePicker()">▧ 이미지</button><button type="button" onclick="openSnsThreadLinkPicker()">↗ 타래 연결</button><button type="button" class="primary" onclick="saveSnsPost()">작성</button></div></div></div>`;
     try{syncAppSelect(document.getElementById('snsThreadSelect'))}catch(_){ }
     const nav=document.getElementById('studioBottomNav');host.querySelector('.snsProjectShell')?.style.setProperty('--studioNavClearance',(nav?.getBoundingClientRect().height||90)+'px');
-    const ta=document.getElementById('snsComposerText');if(ta){ta.oninput=()=>{pendingDraft=ta.value;storeSnsDraft()};ta.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText'&&document.activeElement?.id!=='chatNovelText')setSnsKeyboardState(snsKeyboardIsOpen())},180)});ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(ensureSnsComposerVisible);setTimeout(ensureSnsComposerVisible,200);requestAnimationFrame(updateSnsJumpTopState)})}hydrateSnsImages(host);requestAnimationFrame(updateSnsJumpTopState)
+    const ta=document.getElementById('snsComposerText');if(ta){ta.oninput=()=>{pendingDraft=ta.value;storeSnsDraft()};ta.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement?.id!=='snsComposerText'&&document.activeElement?.id!=='chatNovelText')setSnsKeyboardState(snsKeyboardIsOpen())},180)});ta.addEventListener('focus',()=>{setSnsKeyboardState(true);requestAnimationFrame(()=>requestAnimationFrame(()=>{settleSnsComposerView();updateSnsJumpTopState()}));setTimeout(settleSnsComposerView,180);setTimeout(settleSnsComposerView,350)})}hydrateSnsImages(host);requestAnimationFrame(updateSnsJumpTopState)
     const blurComposer=ev=>{if(!ev.target.closest('.snsComposer')){document.getElementById('snsComposerText')?.blur();setSnsKeyboardState(false)}};
     host.querySelector('.snsTopArea')?.addEventListener('pointerdown',blurComposer);host.querySelector('.snsThreadBar')?.addEventListener('pointerdown',blurComposer);host.querySelector('.snsTimeline')?.addEventListener('pointerdown',blurComposer);
     host.querySelector('.snsTopArea')?.addEventListener('touchstart',blurComposer,{passive:true});host.querySelector('.snsTimeline')?.addEventListener('touchmove',blurComposer,{passive:true});
