@@ -12778,19 +12778,8 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
       const locked=document.createElement('div');locked.className='projectTypeLocked';locked.textContent='SNS 프로젝트 (변경 불가)';
       const note=document.createElement('div');note.className='note projectTypeLockNote';note.textContent='SNS 프로젝트는 타임라인 기록 전용 유형으로 생성 후 변경할 수 없습니다.';
       sel.replaceWith(locked);locked.after(note);sel=null;
-    }else if(!existing&&sel){
-      // Insert SNS before diary instead of appending it after the last type.
-      // The native select and its custom overlay both read the same ordered options.
-      let o=sel.querySelector('option[value="sns"]');
-      if(!o){o=document.createElement('option');o.value=SNS;o.textContent='SNS 프로젝트';}
-      const diary=sel.querySelector('option[value="diary"]');
-      if(diary)sel.insertBefore(o,diary);
-      else{
-        const order=['advanced','general','short','fanwork','sns','diary','ledger','memo'];
-        const following=[...sel.options].find(opt=>order.indexOf(opt.value)>order.indexOf(SNS));
-        if(following)sel.insertBefore(o,following);else sel.appendChild(o);
-      }
-      try{syncAppSelect(sel)}catch(_){ }
+    }else if(!existing&&sel&&!sel.querySelector('option[value="sns"]')){
+      const o=document.createElement('option');o.value=SNS;o.textContent='SNS 프로젝트';sel.appendChild(o);try{syncAppSelect(sel)}catch(_){ }
     }
     return r;
   };
@@ -12898,27 +12887,20 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
   if(!window.__snsJumpTopBound){window.__snsJumpTopBound=true;window.addEventListener('scroll',()=>{if(snsEditorActive())updateSnsJumpTopState()},{passive:true});window.addEventListener('resize',()=>{if(snsEditorActive())updateSnsJumpTopState()},{passive:true})}
   function ensureSnsComposerVisible(smooth=false){
     const ta=document.getElementById('snsComposerText');if(!ta)return;
-    const    if(composer&&document.activeElement===ta&&snsKeyboardIsOpen()){
-      const shell=composer.closest('.snsProjectShell'),nav=document.getElementById('studioBottomNav');
-      const navTop=nav?.getBoundingClientRect().top??bottom;
-      const availableBottom=Math.min(bottom,navTop);
-      const shellRect=shell?.getBoundingClientRect();
-      const width=shellRect?.width||composer.getBoundingClientRect().width;
-      const left=shellRect?.left||composer.getBoundingClientRect().left;
-      const height=composer.getBoundingClientRect().height;
-      composer.style.setProperty('position','fixed','important');
-      composer.style.setProperty('bottom','auto','important');
-      composer.style.setProperty('top',Math.max(top+4,availableBottom-height-8)+'px','important');
-      composer.style.setProperty('left',left+'px','important');
-      composer.style.setProperty('width',width+'px','important');
-      if(shell)shell.style.paddingBottom=(height+20)+'px';
-      return;
+    const vv=window.visualViewport;
+    const top=vv?vv.offsetTop:0,bottom=vv?vv.offsetTop+vv.height:window.innerHeight;
+    const r=ta.getBoundingClientRect();
+    // The entire composer, including the action buttons, must remain visible.
+    const composer=ta.closest('.snsComposer');
+    const cr=composer?.getBoundingClientRect()||r;
+    if(composer&&snsKeyboardIsOpen()&&document.activeElement===ta&&composer.closest('.snsProjectShell')?.querySelector('.snsTimeline > .empty')){
+      const previous=parseFloat(composer.style.marginTop)||0;
+      const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
+      const desired=Math.max(0,previous+bottom-cr.bottom-navHeight-12);
+      if(Math.abs(desired-previous)>2)composer.style.marginTop=desired+'px';
     }
     const updated=composer?.getBoundingClientRect()||r;
     const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
-    const limit=bottom-navHeight-8;
-    const delta=updated.bottom>limit?updated.bottom-limit:updated.top<top+8?updated.top-(top+8):0;
-    if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:smooth?'smooth':'auto'});('studioBottomNav')?.getBoundingClientRect().height||90;
     const limit=bottom-navHeight-8;
     const delta=updated.bottom>limit?updated.bottom-limit:updated.top<top+8?updated.top-(top+8):0;
     if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:smooth?'smooth':'auto'});
