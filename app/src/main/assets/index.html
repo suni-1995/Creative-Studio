@@ -12895,6 +12895,7 @@ body.snsKeyboardActive #studioBottomNav[data-project-menu="yes"]{display:grid!im
     const cr=composer?.getBoundingClientRect()||r;
     const delta=cr.bottom>bottom-8?cr.bottom-(bottom-8):cr.top<top+8?cr.top-(top+8):0;
     if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:smooth?'smooth':'auto'});
+      return;
     }
     const ta=document.getElementById('snsComposerText');if(!ta)return;
     const vv=window.visualViewport;
