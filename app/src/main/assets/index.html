@@ -12892,16 +12892,18 @@ body.snsKeyboardActive .snsProjectShell .snsComposer{position:sticky!important;b
     const r=ta.getBoundingClientRect();
     // The entire composer, including the action buttons, must remain visible.
     const composer=ta.closest('.snsComposer');
-    const cr=composer?.getBoundingClientRect()||r;
-    if(composer&&snsKeyboardIsOpen()&&document.activeElement===ta&&composer.closest('.snsProjectShell')?.querySelector('.snsTimeline > .empty')){
-      const previous=parseFloat(composer.style.marginTop)||0;
-      const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
-      const desired=Math.max(0,previous+bottom-cr.bottom-navHeight-12);
-      if(Math.abs(desired-previous)>2)composer.style.marginTop=desired+'px';
+    const keyboardOpen=snsKeyboardIsOpen()&&document.activeElement===ta;
+    const shell=composer?.closest('.snsProjectShell');
+    if(keyboardOpen&&composer&&shell){
+      // Provide scroll room on the first, otherwise short, empty thread.
+      shell.style.paddingBottom=(composer.getBoundingClientRect().height+20)+'px';
+      composer.style.removeProperty('margin-top');
     }
+    const nav=document.getElementById('studioBottomNav');
+    const navVisible=nav&&getComputedStyle(nav).display!=='none'&&getComputedStyle(nav).visibility!=='hidden'&&nav.getClientRects().length>0;
+    const navTop=navVisible?nav.getBoundingClientRect().top:bottom;
+    const limit=Math.min(bottom,navTop)-8;
     const updated=composer?.getBoundingClientRect()||r;
-    const navHeight=document.getElementById('studioBottomNav')?.getBoundingClientRect().height||90;
-    const limit=bottom-navHeight-8;
     const delta=updated.bottom>limit?updated.bottom-limit:updated.top<top+8?updated.top-(top+8):0;
     if(Math.abs(delta)>2)window.scrollBy({top:delta,behavior:smooth?'smooth':'auto'});
   }
