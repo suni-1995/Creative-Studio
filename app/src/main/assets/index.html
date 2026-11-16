@@ -13155,7 +13155,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
           const by=b.narration?y:y+38;
           rounded(ctx,bx,by,bw,b.bubbleH,23,b.narration?'#302b38':'#3b3449');
           let ty=by+16;
-          for(const line of b.lines){write(ctx,line,bx+24,ty,'#f5f1fa');ty+=lineHeight}
+          for(const line of b.lines){if(b.narration){ctx.textAlign='center';write(ctx,line,bx+bw/2,ty,'#c5bdce');ctx.textAlign='start'}else write(ctx,line,bx+24,ty,'#f5f1fa');ty+=lineHeight}
           if(b.qlines.length){ty+=14;rounded(ctx,bx+18,ty,bw-36,b.qlines.length*30+26,12,'#514761');ty+=13;for(const line of b.qlines){write(ctx,line,bx+32,ty,'#e6d9fa',21);ty+=30}}
           y+=b.height+gap;
         }
@@ -13183,7 +13183,10 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
       const button=document.getElementById('snsCaptureSave');button.disabled=true;button.textContent='저장 중...';
       try{
         for(let i=0;i<images.length;i++){
-          appSaveDataUrl(images[i],'채팅소설_'+(window.snsChatCaptureRoomName||'채팅방')+'_'+String(i+1).padStart(2,'0')+'.png');
+          const filename='채팅소설_'+(window.snsChatCaptureRoomName||'채팅방')+'_'+String(i+1).padStart(2,'0')+'.png';
+          if(window.Android&&typeof Android.saveChatCapturePng==='function'){
+            if(!Android.saveChatCapturePng(filename,images[i]))throw new Error((i+1)+'번째 이미지 저장 실패');
+          }else appSaveDataUrl(images[i],filename);
           await new Promise(resolve=>setTimeout(resolve,250));
         }
         window.snsChatCaptureImages=null;closeModal();alert('이미지 '+images.length+'장의 저장을 요청했습니다.');
