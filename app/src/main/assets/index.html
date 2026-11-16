@@ -13089,7 +13089,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
   async function chatHydrate(){for(const el of document.querySelectorAll('[data-chat-portrait]')){try{const img=(db.images||[]).find(x=>x.id===el.dataset.chatPortrait);const id=el.dataset.chatPortrait;const data=id?await getFile(id):'';if(data&&el.isConnected){el.textContent='';const node=document.createElement('img');node.src=data;node.alt='캐릭터 프로필';el.appendChild(node)}}catch(_){}}}
   const chatQuoteCard=q=>q?'<button type="button" class="chatQuoteCard" data-chat-preview-kind="'+chatEsc(q.kind)+'" data-chat-preview-id="'+chatEsc(q.id)+'">▤ '+chatEsc(chatKindLabel(q.kind))+' · '+chatEsc(chatQuoteName(q))+' ›</button>':'';
 
-  // Render each set of 20 messages into a standalone PNG; exclude editor and navigation UI.
+  // Capture at most 20 messages per PNG, with an additional height limit for Android image viewers.
   window.captureSnsChatNovel=async function(){
     const room=chatRoom();if(!room)return alert('캡쳐할 채팅방을 선택해 주세요.');
     const messages=(db.snsChatMessages||[]).filter(m=>m.project===currentProjectId&&m.roomId===room.id).sort((a,b)=>a.created-b.created);
@@ -13097,56 +13097,70 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
     const btn=document.querySelector('.chatCaptureHeading button');if(btn?.disabled)return;
     if(btn){btn.disabled=true;btn.textContent='캡쳐 중...'}
     try{
-      const width=900,pad=34,gap=18,scale=1.5,avatar=66,bubbleMax=610,font='28px sans-serif';
-      const test=document.createElement('canvas').getContext('2d');test.font=font;
-      const wrap=(str,max)=>{const lines=[];for(const paragraph of String(str||'').split('\n')){if(!paragraph){lines.push('');continue}let line='';for(const ch of paragraph){if(line&&test.measureText(line+ch).width>max){lines.push(line);line=ch}else line+=ch}lines.push(line)}return lines};
-      const portraits=new Map();
-      for(const m of messages){const c=chatCharacters(room).find(x=>x.id===m.characterId);if(!c?.portraitId||portraits.has(c.portraitId))continue;try{const data=await getFile(c.portraitId);if(data){const img=new Image();img.src=data;await img.decode();portraits.set(c.portraitId,img)}}catch(_){}}
-      const round=(ctx,x,y,w,h,r,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()};
-      const write=(ctx,line,x,y,color,size=28,weight='400')=>{ctx.fillStyle=color;ctx.font=weight+' '+size+'px sans-serif';ctx.fillText(line,x,y)};
-      for(let start=0;start<messages.length;start+=20){
-        const chunk=messages.slice(start,start+20),items=[];
-        for(const m of chunk){
-          const narration=m.side==='narration',name=m.characterName||chatCharacters(room).find(x=>x.id===m.characterId)?.name||'캐릭터 없음';
-          const lines=wrap(m.text||'',narration?width-2*pad-72:bubbleMax-44);
-          const quote=m.quote?chatKindLabel(m.quote.kind)+' · '+chatQuoteName(m.quote):'';
-          const quoteLines=quote?wrap(quote,bubbleMax-64):[];
-          const textH=Math.max(1,lines.length)*39;
-          const qH=quote?quoteLines.length*30+26:0;
-          const bubbleH=textH+32+(qH?14+qH:0);
-          items.push({m,name,lines,quoteLines,quote,bubbleH,height:narration?bubbleH+12:Math.max(avatar,bubbleH+38)});
+      const width=900,pad=32,gap=18,avatar=62,bubbleMax=660,lineHeight=38,maxHeight=1800,maxPerPage=20;
+      const measure=document.createElement('canvas').getContext('2d');measure.font='28px sans-serif';
+      const wrap=(value,max)=>{const out=[];for(const paragraph of String(value||'').split('\n')){if(!paragraph){out.push('');continue}let line='';for(const ch of paragraph){if(line&&measure.measureText(line+ch).width>max){out.push(line);line=ch}else line+=ch}out.push(line)}return out.length?out:['']};
+      const chars=chatCharacters(room),portraits=new Map();
+      for(const m of messages){const c=chars.find(x=>x.id===m.characterId);if(!c?.portraitId||portraits.has(c.portraitId))continue;try{const data=await getFile(c.portraitId);if(data){const img=new Image();img.src=data;await img.decode();portraits.set(c.portraitId,img)}}catch(_){}}
+      const blocks=[];
+      for(const m of messages){
+        const narration=m.side==='narration',c=chars.find(x=>x.id===m.characterId),name=m.characterName||c?.name||'캐릭터 없음';
+        const textLines=wrap(m.text||'',narration?width-pad*2-90:bubbleMax-52);
+        const quote=m.quote?chatKindLabel(m.quote.kind)+' · '+chatQuoteName(m.quote):'';
+        const quoteLines=quote?wrap(quote,bubbleMax-92):[];
+        // A single very long message can continue on the next image without truncation.
+        let offset=0,first=true;
+        while(offset<textLines.length){
+          const availableLines=26;
+          const lines=textLines.slice(offset,offset+availableLines);offset+=lines.length;
+          const last=offset>=textLines.length;
+          const qlines=last?quoteLines:[];
+          const bubbleH=lines.length*lineHeight+32+(qlines.length?14+qlines.length*30+26:0);
+          blocks.push({m,c,name,narration,lines,qlines,bubbleH,height:narration?bubbleH+12:Math.max(avatar,bubbleH+38),messageStart:first,continued:!first});
+          first=false;
         }
-        const height=pad*2+items.reduce((n,x)=>n+x.height+gap,0)-gap;
-        if(height*scale>30000)throw Error('대화가 너무 길어 이미지 크기 제한을 초과했습니다. 긴 대화를 나누어 작성해 주세요.');
-        const canvas=document.createElement('canvas');canvas.width=Math.round(width*scale);canvas.height=Math.ceil(height*scale);
+      }
+      const pages=[];let page=[],height=pad*2,count=0;
+      for(const block of blocks){
+        const increment=block.height+(page.length?gap:0);
+        if(page.length&&(height+increment>maxHeight||(block.messageStart&&count>=maxPerPage))){
+          pages.push(page);page=[];height=pad*2;count=0;
+        }
+        page.push(block);height+=block.height+(page.length>1?gap:0);
+        if(block.messageStart)count++;
+      }
+      if(page.length)pages.push(page);
+      const rounded=(ctx,x,y,w,h,r,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()};
+      const write=(ctx,value,x,y,color,size=28,weight='400')=>{ctx.fillStyle=color;ctx.font=weight+' '+size+'px sans-serif';ctx.fillText(value,x,y)};
+      for(let p=0;p<pages.length;p++){
+        const items=pages[p],h=pad*2+items.reduce((n,b)=>n+b.height,0)+gap*(items.length-1);
+        const canvas=document.createElement('canvas');canvas.width=width;canvas.height=Math.ceil(h);
         const ctx=canvas.getContext('2d');if(!ctx)throw Error('이미지 생성 기능을 사용할 수 없습니다.');
-        ctx.scale(scale,scale);ctx.fillStyle='#19171e';ctx.fillRect(0,0,width,height);ctx.textBaseline='top';
+        ctx.fillStyle='#19171e';ctx.fillRect(0,0,width,h);ctx.textBaseline='top';
         let y=pad;
-        for(const it of items){
-          const {m,name,lines,quoteLines,quote,bubbleH}=it;
-          const narration=m.side==='narration',right=m.side==='right';
-          const bx=narration?pad+14:right?width-pad-bubbleMax:pad+avatar+18;
-          const bw=narration?width-2*pad-28:bubbleMax;
-          if(!narration){
-            const c=chatCharacters(room).find(x=>x.id===m.characterId),img=c?.portraitId&&portraits.get(c.portraitId);
-            const ax=right?width-pad-avatar:pad;
+        for(const b of items){
+          const right=b.m.side==='right';
+          const bx=b.narration?pad+14:right?width-pad-avatar-18-bubbleMax:pad+avatar+18;
+          const bw=b.narration?width-pad*2-28:bubbleMax;
+          if(!b.narration){
+            const ax=right?width-pad-avatar:pad,img=b.c?.portraitId&&portraits.get(b.c.portraitId);
             ctx.save();ctx.beginPath();ctx.arc(ax+avatar/2,y+avatar/2,avatar/2,0,Math.PI*2);ctx.clip();
             if(img)ctx.drawImage(img,ax,y,avatar,avatar);else{ctx.fillStyle='#6c5a82';ctx.fillRect(ax,y,avatar,avatar)}ctx.restore();
-            write(ctx,name,bx,y,'#c5bdce',21,'500');
+            write(ctx,b.name+(b.continued?' (계속)':''),bx,y,'#c5bdce',21,'500');
           }
-          const by=narration?y:y+36;
-          round(ctx,bx,by,bw,bubbleH,24,narration?'#302b38':'#3b3449');
-          let ty=by+17;
-          for(const line of lines){write(ctx,line,bx+22,ty,'#f5f1fa');ty+=39}
-          if(quote){ty+=14;const qh=quoteLines.length*30+26;round(ctx,bx+18,ty,bw-36,qh,12,'#514761');ty+=13;for(const line of quoteLines){write(ctx,line,bx+32,ty,'#e6d9fa',21);ty+=30}}
-          y+=it.height+gap;
+          const by=b.narration?y:y+38;
+          rounded(ctx,bx,by,bw,b.bubbleH,23,b.narration?'#302b38':'#3b3449');
+          let ty=by+16;
+          for(const line of b.lines){write(ctx,line,bx+24,ty,'#f5f1fa');ty+=lineHeight}
+          if(b.qlines.length){ty+=14;rounded(ctx,bx+18,ty,bw-36,b.qlines.length*30+26,12,'#514761');ty+=13;for(const line of b.qlines){write(ctx,line,bx+32,ty,'#e6d9fa',21);ty+=30}}
+          y+=b.height+gap;
         }
-        const data=canvas.toDataURL('image/png');
-        const filename='채팅소설_'+room.name+'_'+String(Math.floor(start/20)+1).padStart(2,'0')+'.png';
-        appSaveDataUrl(data,filename);
-        await new Promise(resolve=>setTimeout(resolve,100));
+        const filename='채팅소설_'+room.name+'_'+String(p+1).padStart(2,'0')+'.png';
+        appSaveDataUrl(canvas.toDataURL('image/png'),filename);
+        await new Promise(resolve=>setTimeout(resolve,150));
+        canvas.width=0;canvas.height=0;
       }
-      alert('채팅 소설 '+Math.ceil(messages.length/20)+'장 저장을 요청했습니다.');
+      alert('채팅 소설 이미지 '+pages.length+'장 저장을 요청했습니다.');
     }catch(err){console.error('chat capture',err);alert('캡쳐 중 오류가 발생했습니다: '+(err?.message||err))}
     finally{if(btn){btn.disabled=false;btn.textContent='📷 캡쳐하기'}}
   };
