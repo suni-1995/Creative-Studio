@@ -1628,6 +1628,46 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
         }
 
+
+        // Save chat capture PNGs directly to the gallery, without launching a file picker per page.
+        @JavascriptInterface
+        public boolean saveChatCapturePng(String fileName, String dataUrl) {
+            if (dataUrl == null || !dataUrl.startsWith("data:image/png;base64,")) return false;
+            Uri uri = null;
+            try {
+                byte[] bytes = Base64.decode(dataUrl.substring("data:image/png;base64,".length()), Base64.DEFAULT);
+                String name = (fileName == null ? "chat.png" : fileName).replaceAll("[\\\\/:*?\"<>|]", "_");
+                if (!name.endsWith(".png")) name += ".png";
+                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentValues values = new android.content.ContentValues();
+                    values.put(MediaStore.Images.Media.DISPLAY_NAME, name);
+                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                    values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CreativeStudio");
+                    values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                    uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                    if (uri == null) return false;
+                    try (OutputStream out = getContentResolver().openOutputStream(uri)) {
+                        if (out == null) throw new java.io.IOException("Gallery output stream unavailable");
+                        out.write(bytes);
+                    }
+                    values.clear();
+                    values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                    getContentResolver().update(uri, values, null, null);
+                } else {
+                    File dir = new File(getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES), "CreativeStudio");
+                    if (!dir.exists() && !dir.mkdirs()) return false;
+                    File file = new File(dir, name);
+                    try (OutputStream out = new FileOutputStream(file)) { out.write(bytes); }
+                    android.media.MediaScannerConnection.scanFile(MainActivity.this, new String[]{file.getAbsolutePath()}, new String[]{"image/png"}, null);
+                }
+                return true;
+            } catch (Exception e) {
+                if (uri != null) try { getContentResolver().delete(uri, null, null); } catch (Exception ignored) { }
+                android.util.Log.e("CreativeStudio", "Chat capture gallery save failed", e);
+                return false;
+            }
+        }
+
         @JavascriptInterface
         public void saveDataUrl(String fileName, String dataUrl) {
             if (dataUrl == null) return;
