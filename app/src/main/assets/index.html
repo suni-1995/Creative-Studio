@@ -12696,6 +12696,7 @@ body.snsChatTrashProject #backupTrash .backupTrashNav button{min-width:0!importa
 #projectView:has(#studioHubTabs [data-hub="overview"].active) #projectRecent{display:none!important}
 </style>
 <style id="snsChatCaptureStyle">.chatCaptureHeading{display:flex;align-items:center;justify-content:space-between;gap:12px}.chatCaptureHeading button{flex-shrink:0;padding:9px 14px;border-radius:12px;font-size:13px}.chatCaptureHeading button:disabled{opacity:.6}</style>
+<style id="snsChatCapturePreviewCss">.snsChatCapturePreview{width:min(100%,560px)}.snsCaptureImageViewport{max-height:55dvh;overflow:auto;border:1px solid var(--line);border-radius:14px;background:#19171e;text-align:center}.snsCaptureImageViewport img{display:block;width:100%;height:auto}.snsCapturePager,.snsCaptureActions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.snsCapturePager button,.snsCaptureActions button{min-width:0}</style>
 <!-- ===== FIX29 ROUND1: SNS PROJECT MVP ===== -->
 <style id="fix29SnsStyles">
 .snsProjectShell{display:grid;gap:14px;max-width:860px;margin:0 auto}
@@ -13097,7 +13098,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
     const btn=document.querySelector('.chatCaptureHeading button');if(btn?.disabled)return;
     if(btn){btn.disabled=true;btn.textContent='캡쳐 중...'}
     try{
-      const width=900,pad=32,gap=18,avatar=62,bubbleMax=660,lineHeight=38,maxHeight=1800,maxPerPage=20;
+      const width=900,pad=32,gap=18,avatar=62,bubbleMax=660,lineHeight=38,maxHeight=1800,maxPerPage=10;
       const measure=document.createElement('canvas').getContext('2d');measure.font='28px sans-serif';
       const wrap=(value,max)=>{const out=[];for(const paragraph of String(value||'').split('\n')){if(!paragraph){out.push('');continue}let line='';for(const ch of paragraph){if(line&&measure.measureText(line+ch).width>max){out.push(line);line=ch}else line+=ch}out.push(line)}return out.length?out:['']};
       const chars=chatCharacters(room),portraits=new Map();
@@ -13130,6 +13131,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
         if(block.messageStart)count++;
       }
       if(page.length)pages.push(page);
+      const captures=[];
       const rounded=(ctx,x,y,w,h,r,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()};
       const write=(ctx,value,x,y,color,size=28,weight='400')=>{ctx.fillStyle=color;ctx.font=weight+' '+size+'px sans-serif';ctx.fillText(value,x,y)};
       for(let p=0;p<pages.length;p++){
@@ -13140,8 +13142,10 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
         let y=pad;
         for(const b of items){
           const right=b.m.side==='right';
-          const bx=b.narration?pad+14:right?width-pad-avatar-18-bubbleMax:pad+avatar+18;
-          const bw=b.narration?width-pad*2-28:bubbleMax;
+          const textWidth=Math.max(...b.lines.map(line=>measure.measureText(line).width),80);
+          const quoteWidth=b.qlines.length?Math.max(...b.qlines.map(line=>line.length*22))+100:0;
+          const bw=b.narration?width-pad*2-28:Math.min(bubbleMax,Math.max(100,textWidth+52,quoteWidth));
+          const bx=b.narration?pad+14:right?width-pad-avatar-18-bw:pad+avatar+18;
           if(!b.narration){
             const ax=right?width-pad-avatar:pad,img=b.c?.portraitId&&portraits.get(b.c.portraitId);
             ctx.save();ctx.beginPath();ctx.arc(ax+avatar/2,y+avatar/2,avatar/2,0,Math.PI*2);ctx.clip();
@@ -13155,16 +13159,37 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
           if(b.qlines.length){ty+=14;rounded(ctx,bx+18,ty,bw-36,b.qlines.length*30+26,12,'#514761');ty+=13;for(const line of b.qlines){write(ctx,line,bx+32,ty,'#e6d9fa',21);ty+=30}}
           y+=b.height+gap;
         }
-        const filename='채팅소설_'+room.name+'_'+String(p+1).padStart(2,'0')+'.png';
-        appSaveDataUrl(canvas.toDataURL('image/png'),filename);
-        await new Promise(resolve=>setTimeout(resolve,150));
+        captures.push(canvas.toDataURL('image/png'));
+        await new Promise(resolve=>setTimeout(resolve,30));
         canvas.width=0;canvas.height=0;
       }
-      alert('채팅 소설 이미지 '+pages.length+'장 저장을 요청했습니다.');
+      window.snsChatCaptureImages=captures;
+      window.snsChatCaptureRoomName=room.name;
+      window.snsChatCapturePage=0;
+      window.showSnsChatCapturePreview();
     }catch(err){console.error('chat capture',err);alert('캡쳐 중 오류가 발생했습니다: '+(err?.message||err))}
     finally{if(btn){btn.disabled=false;btn.textContent='📷 캡쳐하기'}}
   };
 
+
+  window.showSnsChatCapturePreview=function(){
+    const images=window.snsChatCaptureImages||[];if(!images.length)return;
+    const n=Math.max(0,Math.min(window.snsChatCapturePage||0,images.length-1));window.snsChatCapturePage=n;
+    openModal('<div class="stack snsChatCapturePreview"><div class="toolbar"><h2 style="margin:0">채팅소설 캡쳐 미리보기</h2><span class="pill">총 '+images.length+'장</span></div><div class="meta">'+esc(window.snsChatCaptureRoomName||'채팅방')+' · '+(n+1)+' / '+images.length+'</div><div class="snsCaptureImageViewport"><img alt="채팅소설 이미지 미리보기" src="'+images[n]+'"></div><div class="snsCapturePager"><button type="button" id="snsCapturePrev" '+(n===0?'disabled':'')+'>이전</button><button type="button" id="snsCaptureNext" '+(n===images.length-1?'disabled':'')+'>다음</button></div><div class="snsCaptureActions"><button type="button" id="snsCaptureCancel">취소</button><button type="button" class="primary" id="snsCaptureSave">이미지 '+images.length+'장 저장</button></div></div>');
+    document.getElementById('snsCapturePrev').onclick=()=>{window.snsChatCapturePage=n-1;window.showSnsChatCapturePreview()};
+    document.getElementById('snsCaptureNext').onclick=()=>{window.snsChatCapturePage=n+1;window.showSnsChatCapturePreview()};
+    document.getElementById('snsCaptureCancel').onclick=()=>{window.snsChatCaptureImages=null;closeModal()};
+    document.getElementById('snsCaptureSave').onclick=async()=>{
+      const button=document.getElementById('snsCaptureSave');button.disabled=true;button.textContent='저장 중...';
+      try{
+        for(let i=0;i<images.length;i++){
+          appSaveDataUrl(images[i],'채팅소설_'+(window.snsChatCaptureRoomName||'채팅방')+'_'+String(i+1).padStart(2,'0')+'.png');
+          await new Promise(resolve=>setTimeout(resolve,250));
+        }
+        window.snsChatCaptureImages=null;closeModal();alert('이미지 '+images.length+'장의 저장을 요청했습니다.');
+      }catch(e){button.disabled=false;button.textContent='다시 저장';alert('저장 중 오류: '+(e.message||e))}
+    };
+  };
   function chatMessagesHtml(r){
     const messages=db.snsChatMessages.filter(m=>m.roomId===r.id&&m.project===currentProjectId).sort((a,b)=>a.created-b.created);
     if(!messages.length)return '<div class="empty">아직 대화가 없습니다. 아래에서 첫 대화를 작성해 보세요.</div>';
