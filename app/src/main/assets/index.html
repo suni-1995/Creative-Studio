@@ -12695,6 +12695,7 @@ body.snsChatTrashProject #backupTrash .backupTrashNav button{min-width:0!importa
 <style id="snsOverviewIsolationFix">
 #projectView:has(#studioHubTabs [data-hub="overview"].active) #projectRecent{display:none!important}
 </style>
+<style id="snsChatCaptureStyle">.chatCaptureHeading{display:flex;align-items:center;justify-content:space-between;gap:12px}.chatCaptureHeading button{flex-shrink:0;padding:9px 14px;border-radius:12px;font-size:13px}.chatCaptureHeading button:disabled{opacity:.6}</style>
 <!-- ===== FIX29 ROUND1: SNS PROJECT MVP ===== -->
 <style id="fix29SnsStyles">
 .snsProjectShell{display:grid;gap:14px;max-width:860px;margin:0 auto}
@@ -13087,6 +13088,69 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
   const chatAvatar=c=>'<span class="chatAvatar"'+(c?.portraitId?' data-chat-portrait="'+chatEsc(c.portraitId)+'"':'')+'>♙</span>';
   async function chatHydrate(){for(const el of document.querySelectorAll('[data-chat-portrait]')){try{const img=(db.images||[]).find(x=>x.id===el.dataset.chatPortrait);const id=el.dataset.chatPortrait;const data=id?await getFile(id):'';if(data&&el.isConnected){el.textContent='';const node=document.createElement('img');node.src=data;node.alt='캐릭터 프로필';el.appendChild(node)}}catch(_){}}}
   const chatQuoteCard=q=>q?'<button type="button" class="chatQuoteCard" data-chat-preview-kind="'+chatEsc(q.kind)+'" data-chat-preview-id="'+chatEsc(q.id)+'">▤ '+chatEsc(chatKindLabel(q.kind))+' · '+chatEsc(chatQuoteName(q))+' ›</button>':'';
+
+  // Render each set of 20 messages into a standalone PNG; exclude editor and navigation UI.
+  window.captureSnsChatNovel=async function(){
+    const room=chatRoom();if(!room)return alert('캡쳐할 채팅방을 선택해 주세요.');
+    const messages=(db.snsChatMessages||[]).filter(m=>m.project===currentProjectId&&m.roomId===room.id).sort((a,b)=>a.created-b.created);
+    if(!messages.length)return alert('캡쳐할 대화가 없습니다.');
+    const btn=document.querySelector('.chatCaptureHeading button');if(btn?.disabled)return;
+    if(btn){btn.disabled=true;btn.textContent='캡쳐 중...'}
+    try{
+      const width=900,pad=34,gap=18,scale=1.5,avatar=66,bubbleMax=610,font='28px sans-serif';
+      const test=document.createElement('canvas').getContext('2d');test.font=font;
+      const wrap=(str,max)=>{const lines=[];for(const paragraph of String(str||'').split('\n')){if(!paragraph){lines.push('');continue}let line='';for(const ch of paragraph){if(line&&test.measureText(line+ch).width>max){lines.push(line);line=ch}else line+=ch}lines.push(line)}return lines};
+      const portraits=new Map();
+      for(const m of messages){const c=chatCharacters(room).find(x=>x.id===m.characterId);if(!c?.portraitId||portraits.has(c.portraitId))continue;try{const data=await getFile(c.portraitId);if(data){const img=new Image();img.src=data;await img.decode();portraits.set(c.portraitId,img)}}catch(_){}}
+      const round=(ctx,x,y,w,h,r,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()};
+      const write=(ctx,line,x,y,color,size=28,weight='400')=>{ctx.fillStyle=color;ctx.font=weight+' '+size+'px sans-serif';ctx.fillText(line,x,y)};
+      for(let start=0;start<messages.length;start+=20){
+        const chunk=messages.slice(start,start+20),items=[];
+        for(const m of chunk){
+          const narration=m.side==='narration',name=m.characterName||chatCharacters(room).find(x=>x.id===m.characterId)?.name||'캐릭터 없음';
+          const lines=wrap(m.text||'',narration?width-2*pad-72:bubbleMax-44);
+          const quote=m.quote?chatKindLabel(m.quote.kind)+' · '+chatQuoteName(m.quote):'';
+          const quoteLines=quote?wrap(quote,bubbleMax-64):[];
+          const textH=Math.max(1,lines.length)*39;
+          const qH=quote?quoteLines.length*30+26:0;
+          const bubbleH=textH+32+(qH?14+qH:0);
+          items.push({m,name,lines,quoteLines,quote,bubbleH,height:narration?bubbleH+12:Math.max(avatar,bubbleH+38)});
+        }
+        const height=pad*2+items.reduce((n,x)=>n+x.height+gap,0)-gap;
+        if(height*scale>30000)throw Error('대화가 너무 길어 이미지 크기 제한을 초과했습니다. 긴 대화를 나누어 작성해 주세요.');
+        const canvas=document.createElement('canvas');canvas.width=Math.round(width*scale);canvas.height=Math.ceil(height*scale);
+        const ctx=canvas.getContext('2d');if(!ctx)throw Error('이미지 생성 기능을 사용할 수 없습니다.');
+        ctx.scale(scale,scale);ctx.fillStyle='#19171e';ctx.fillRect(0,0,width,height);ctx.textBaseline='top';
+        let y=pad;
+        for(const it of items){
+          const {m,name,lines,quoteLines,quote,bubbleH}=it;
+          const narration=m.side==='narration',right=m.side==='right';
+          const bx=narration?pad+14:right?width-pad-bubbleMax:pad+avatar+18;
+          const bw=narration?width-2*pad-28:bubbleMax;
+          if(!narration){
+            const c=chatCharacters(room).find(x=>x.id===m.characterId),img=c?.portraitId&&portraits.get(c.portraitId);
+            const ax=right?width-pad-avatar:pad;
+            ctx.save();ctx.beginPath();ctx.arc(ax+avatar/2,y+avatar/2,avatar/2,0,Math.PI*2);ctx.clip();
+            if(img)ctx.drawImage(img,ax,y,avatar,avatar);else{ctx.fillStyle='#6c5a82';ctx.fillRect(ax,y,avatar,avatar)}ctx.restore();
+            write(ctx,name,bx,y,'#c5bdce',21,'500');
+          }
+          const by=narration?y:y+36;
+          round(ctx,bx,by,bw,bubbleH,24,narration?'#302b38':'#3b3449');
+          let ty=by+17;
+          for(const line of lines){write(ctx,line,bx+22,ty,'#f5f1fa');ty+=39}
+          if(quote){ty+=14;const qh=quoteLines.length*30+26;round(ctx,bx+18,ty,bw-36,qh,12,'#514761');ty+=13;for(const line of quoteLines){write(ctx,line,bx+32,ty,'#e6d9fa',21);ty+=30}}
+          y+=it.height+gap;
+        }
+        const data=canvas.toDataURL('image/png');
+        const filename='채팅소설_'+room.name+'_'+String(Math.floor(start/20)+1).padStart(2,'0')+'.png';
+        appSaveDataUrl(data,filename);
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+      alert('채팅 소설 '+Math.ceil(messages.length/20)+'장 저장을 요청했습니다.');
+    }catch(err){console.error('chat capture',err);alert('캡쳐 중 오류가 발생했습니다: '+(err?.message||err))}
+    finally{if(btn){btn.disabled=false;btn.textContent='📷 캡쳐하기'}}
+  };
+
   function chatMessagesHtml(r){
     const messages=db.snsChatMessages.filter(m=>m.roomId===r.id&&m.project===currentProjectId).sort((a,b)=>a.created-b.created);
     if(!messages.length)return '<div class="empty">아직 대화가 없습니다. 아래에서 첫 대화를 작성해 보세요.</div>';
@@ -13101,7 +13165,7 @@ body.snsKeyboardActive #projectRecent .chatNovelShell .chatComposer{position:rel
     const host=snsHost();if(!host||currentProjectType()!==SNS)return;
     const rooms=chatRooms(),r=chatRoom();if(r){if(chatDraftProjectId!==currentProjectId||chatRoomId!==r.id){chatDraftProjectId=currentProjectId;chatRoomId=r.id;chatDraft=loadChatDraft(r.id)}else if(!document.getElementById('chatNovelText'))chatDraft=loadChatDraft(r.id);}
     host.innerHTML='<div class="snsProjectShell chatNovelShell"><div class="chatModeSwitch"><button type="button" onclick="switchSnsChatMode(false)">SNS 기록</button><button type="button" class="primary">채팅소설 만들기</button></div>'+
-      '<div class="snsTopArea"><h2 style="margin:0">채팅소설</h2><div class="meta">채팅방마다 하나의 창작 프로젝트를 연결합니다.</div></div>'+
+      '<div class="snsTopArea"><div class="chatCaptureHeading"><h2 style="margin:0">채팅소설</h2><button type="button" onclick="captureSnsChatNovel()">📷 캡쳐하기</button></div><div class="meta">채팅방마다 하나의 창작 프로젝트를 연결합니다.</div></div>'+
       '<div class="snsThreadBar"><select id="chatRoomSelect" onchange="switchSnsChatRoom(this.value)">'+(rooms.length?rooms.map(x=>'<option value="'+chatEsc(x.id)+'" '+(x.id===r?.id?'selected':'')+'>'+chatEsc(x.name)+'</option>').join(''):'<option value="">채팅방 없음</option>')+'</select><button type="button" onclick="openNewSnsChatRoom()">＋ 새 채팅방</button></div>'+
       (r?'<div class="meta">연결 프로젝트: '+chatEsc(projectById(r.sourceProject)?.name||'삭제된 프로젝트')+'</div><div class="chatTimeline">'+chatMessagesHtml(r)+'</div>'+
       '<div class="snsComposer chatComposer"><div class="chatSideButtons"><button type="button" onclick="chooseSnsChatSide(\'left\')">'+chatEsc(chatCharacters(r).find(c=>c.id===r.leftId)?.name||'왼쪽 캐릭터')+'</button><button type="button" onclick="openSnsChatQuotePicker()">인용</button><button type="button" onclick="chooseSnsChatSide(\'narration\')">설명문</button><button type="button" onclick="chooseSnsChatSide(\'right\')">'+chatEsc(chatCharacters(r).find(c=>c.id===r.rightId)?.name||'오른쪽 캐릭터')+'</button></div>'+
