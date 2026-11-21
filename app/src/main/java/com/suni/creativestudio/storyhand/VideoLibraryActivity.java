@@ -393,7 +393,9 @@ public class VideoLibraryActivity extends Activity {
         copying = true;
         addButton.setEnabled(false);
         exportAllButton.setEnabled(false);
-        final JSONArray snapshot = new JSONArray(videos.toString());
+        final JSONArray snapshot;
+        try { snapshot = new JSONArray(videos.toString()); }
+        catch (Exception e) { copying = false; addButton.setEnabled(true); exportAllButton.setEnabled(true); toast("영상 목록을 읽을 수 없습니다."); return; }
         progressLabel.setVisibility(View.VISIBLE);
         progressBar.setVisibility(View.VISIBLE);
         progressBar.setProgress(0);
