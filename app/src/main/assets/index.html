@@ -14766,6 +14766,26 @@ body.bulkSelecting .subsec:not(.hidden){
 #projectFolderArea .folderNativeCard .folderCardActions>button{display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;min-width:0!important;width:100%!important;height:30px!important;min-height:30px!important;margin:0!important;padding:3px!important;font-size:11px!important;border-radius:8px!important}
 #projectFolderArea .projectFolderItems>.folderSecretCard{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;min-height:136px!important;text-align:center!important}
 #projectFolderArea .folderSecretCard .v63SecretPlaceholder{max-width:100%;min-width:0}
+/* Folder-only secret cards follow the same compact card footprint as folder projects. */
+#projectFolderArea .projectFolderItems>.folderSecretCard{
+  position:relative!important;display:grid!important;
+  grid-template-columns:clamp(88px,25%,118px) minmax(0,1fr)!important;
+  grid-template-rows:auto!important;align-items:center!important;
+  width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;
+  max-width:none!important;margin:0!important;padding:10px!important;gap:10px!important;
+  box-sizing:border-box!important;overflow:hidden!important;
+}
+#projectFolderArea .projectFolderItems>.folderSecretCard::before{
+  content:"";display:block;grid-column:1;grid-row:1;width:100%;aspect-ratio:1/1;
+}
+#projectFolderArea .projectFolderItems>.folderSecretCard .v63SecretPlaceholder{
+  position:absolute!important;inset:10px!important;max-width:none!important;
+  pointer-events:none!important;
+}
+#projectFolderArea .projectFolderItems>.folderSecretCard>button{
+  position:absolute!important;left:50%!important;top:50%!important;
+  transform:translate(-50%,-50%)!important;margin:0!important;z-index:1!important;
+}
 /* uiux1v03: each folder has its own clearly separated editing panel. */
 #projectFolderEditList{display:grid!important;gap:14px!important;min-width:0!important}
 #projectFolderEditList .projectFolderEditRow{display:grid!important;grid-template-columns:minmax(0,1fr) 62px!important;gap:12px!important;align-items:center!important;padding:16px!important;margin:0!important;border:1px solid var(--line)!important;border-radius:15px!important;background:var(--card)!important;box-sizing:border-box!important;min-width:0!important}
