@@ -7,6 +7,12 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.provider.DocumentsContract;
+import android.content.ClipData;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Locale;
 import android.view.Gravity;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -24,6 +30,12 @@ import java.util.UUID;
 public class VideoLibraryActivity extends Activity {
     private static final int PICK_VIDEO = 8401;
     private static final int EXPORT_VIDEO = 8402;
+    private static final int EXPORT_FOLDER = 8403;
+    private final ArrayList<Uri> importQueue = new ArrayList<>();
+    private boolean batchImport = false;
+    private String sortMode = "newest";
+    private Button exportAllButton;
+    private Spinner sortSpinner;
     private String pendingExportId;
     private static final String PREFS = "video_library_only";
     private static final String KEY = "videos";
@@ -90,15 +102,45 @@ public class VideoLibraryActivity extends Activity {
         titleParams.bottomMargin = dp(12);
         root.addView(title, titleParams);
 
+        LinearLayout topActions = new LinearLayout(this);
+        topActions.setOrientation(LinearLayout.HORIZONTAL);
         addButton = new Button(this);
         addButton.setText("＋  동영상 등록");
         addButton.setAllCaps(false);
         addButton.setTextColor(Color.WHITE);
         addButton.setBackground(rounded(accent, Color.TRANSPARENT, 14));
         addButton.setOnClickListener(v -> chooseVideo());
-        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(-1, dp(52));
-        addParams.bottomMargin = dp(14);
-        root.addView(addButton, addParams);
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(0, dp(52), 1);
+        topActions.addView(addButton, addParams);
+        exportAllButton = new Button(this);
+        exportAllButton.setText("전체 다운로드");
+        exportAllButton.setAllCaps(false);
+        exportAllButton.setTextSize(12);
+        exportAllButton.setTextColor(foreground);
+        exportAllButton.setBackground(rounded(surface, stroke, 14));
+        exportAllButton.setOnClickListener(v -> chooseExportFolder());
+        LinearLayout.LayoutParams exportParams = new LinearLayout.LayoutParams(0, dp(52), 1);
+        exportParams.leftMargin = dp(8);
+        topActions.addView(exportAllButton, exportParams);
+        LinearLayout.LayoutParams topParams = new LinearLayout.LayoutParams(-1, dp(52));
+        topParams.bottomMargin = dp(10);
+        root.addView(topActions, topParams);
+        sortSpinner = new Spinner(this);
+        String[] sortOptions = {"최신 등록순", "오래된 등록순", "이름 오름차순", "이름 내림차순"};
+        ArrayAdapter<String> sortAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, sortOptions);
+        sortAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sortSpinner.setAdapter(sortAdapter);
+        sortSpinner.setSelection(0);
+        sortSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                sortMode = new String[]{"newest", "oldest", "nameAsc", "nameDesc"}[position];
+                if (list != null) render();
+            }
+        });
+        LinearLayout.LayoutParams sortParams = new LinearLayout.LayoutParams(-1, dp(44));
+        sortParams.bottomMargin = dp(8);
+        root.addView(sortSpinner, sortParams);
 
         progressLabel = text("", 13, secondary, false);
         progressLabel.setVisibility(View.GONE);
@@ -138,14 +180,23 @@ public class VideoLibraryActivity extends Activity {
         Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         pick.addCategory(Intent.CATEGORY_OPENABLE);
         pick.setType("video/*");
+        pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         try { startActivityForResult(pick, PICK_VIDEO); }
         catch (Exception e) { toast("파일 선택기를 열 수 없습니다."); }
     }
 
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        if (request == PICK_VIDEO && result == RESULT_OK && data != null && data.getData() != null) {
-            importVideo(data.getData());
+        if (request == PICK_VIDEO && result == RESULT_OK && data != null) {
+            importQueue.clear();
+            ClipData clip = data.getClipData();
+            if (clip != null) {
+                for (int i = 0; i < clip.getItemCount(); i++) importQueue.add(clip.getItemAt(i).getUri());
+            } else if (data.getData() != null) importQueue.add(data.getData());
+            batchImport = !importQueue.isEmpty();
+            importNextVideo();
+        } else if (request == EXPORT_FOLDER) {
+            if (result == RESULT_OK && data != null && data.getData() != null) exportAllVideos(data.getData());
         } else if (request == EXPORT_VIDEO) {
             String id = pendingExportId;
             pendingExportId = null;
@@ -153,6 +204,12 @@ public class VideoLibraryActivity extends Activity {
                 exportVideo(id, data.getData());
             }
         }
+    }
+
+    private void importNextVideo() {
+        if (importQueue.isEmpty()) { batchImport = false; return; }
+        Uri next = importQueue.remove(0);
+        importVideo(next);
     }
 
     private String displayName(Uri uri) {
@@ -176,13 +233,14 @@ public class VideoLibraryActivity extends Activity {
         cancelled = false;
         importingPercent = 0;
         addButton.setEnabled(false);
+        exportAllButton.setEnabled(false);
         final String name = displayName(uri);
         importingName = name;
         render();
         final long total = fileSize(uri);
         if (total > 0 && getFilesDir().getUsableSpace() < total + 1024L * 1024L) {
             copying = false; importingName = ""; importingPercent = -1;
-            addButton.setEnabled(true); render(); toast("영상 저장 공간이 부족합니다."); return;
+            addButton.setEnabled(true); exportAllButton.setEnabled(true); render(); toast("영상 저장 공간이 부족합니다."); importNextVideo(); return;
         }
         progressLabel.setVisibility(View.VISIBLE);
         progressBar.setProgress(0);
@@ -239,7 +297,7 @@ public class VideoLibraryActivity extends Activity {
             } finally {
                 currentTemp = null;
                 copying = false;
-                runOnUiThread(() -> { addButton.setEnabled(true); progressBar.setVisibility(View.GONE); progressLabel.setVisibility(View.GONE); importingName = ""; importingPercent = -1; render(); });
+                runOnUiThread(() -> { addButton.setEnabled(true); exportAllButton.setEnabled(true); progressBar.setVisibility(View.GONE); progressLabel.setVisibility(View.GONE); importingName = ""; importingPercent = -1; render(); importNextVideo(); });
             }
         }).start();
     }
@@ -258,10 +316,14 @@ public class VideoLibraryActivity extends Activity {
             empty.setPadding(dp(14), dp(22), dp(14), dp(22));
             list.addView(empty);
         }
-        for (int i = 0; i < videos.length(); i++) {
-            JSONObject item = videos.optJSONObject(i);
-            if (item != null) addVideoRow(item.optString("title", "동영상"), item.optString("id"), -1);
-        }
+        ArrayList<JSONObject> ordered = new ArrayList<>();
+        for (int i = 0; i < videos.length(); i++) if (videos.optJSONObject(i) != null) ordered.add(videos.optJSONObject(i));
+        if ("oldest".equals(sortMode)) Collections.reverse(ordered);
+        else if ("nameAsc".equals(sortMode) || "nameDesc".equals(sortMode)) {
+            Collections.sort(ordered, (a, b) -> a.optString("title").compareToIgnoreCase(b.optString("title")));
+            if ("nameDesc".equals(sortMode)) Collections.reverse(ordered);
+        } else Collections.reverse(ordered);
+        for (JSONObject item : ordered) addVideoRow(item.optString("title", "동영상"), item.optString("id"), -1);
     }
 
     private void addVideoRow(String name, String id, int percent) {
@@ -316,6 +378,81 @@ public class VideoLibraryActivity extends Activity {
         }
     }
 
+
+    private void chooseExportFolder() {
+        if (copying) return;
+        if (videos.length() == 0) { toast("다운로드할 영상이 없습니다."); return; }
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        try { startActivityForResult(intent, EXPORT_FOLDER); }
+        catch (Exception e) { toast("저장 폴더 선택기를 열 수 없습니다."); }
+    }
+
+    private void exportAllVideos(Uri treeUri) {
+        if (copying) return;
+        copying = true;
+        addButton.setEnabled(false);
+        exportAllButton.setEnabled(false);
+        final JSONArray snapshot = new JSONArray(videos.toString());
+        progressLabel.setVisibility(View.VISIBLE);
+        progressBar.setVisibility(View.VISIBLE);
+        progressBar.setProgress(0);
+        new Thread(() -> {
+            int succeeded = 0, failed = 0;
+            java.util.HashSet<String> names = new java.util.HashSet<>();
+            try {
+                Uri parent = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri));
+                for (int i = 0; i < snapshot.length(); i++) {
+                    JSONObject item = snapshot.optJSONObject(i);
+                    if (item == null) { failed++; continue; }
+                    String id = item.optString("id");
+                    File source = safeVideoFile(id, item.optString("file"));
+                    if (source == null || !source.isFile()) { failed++; continue; }
+                    String name = item.optString("title", "동영상").trim();
+                    name = name.replaceAll("[\\\\/:*?\"<>|]", "_");
+                    if (name.isEmpty()) name = "동영상";
+                    if (!name.toLowerCase(Locale.ROOT).matches(".*\\.(mp4|mkv|avi|mov|webm|m4v|3gp)$")) name += ".mp4";
+                    String base = name, extension = "";
+                    int dot = name.lastIndexOf('.');
+                    if (dot > 0) { base = name.substring(0, dot); extension = name.substring(dot); }
+                    String unique = name;
+                    int number = 2;
+                    while (!names.add(unique.toLowerCase(Locale.ROOT))) unique = base + " (" + number++ + ")" + extension;
+                    Uri output = null;
+                    try {
+                        output = DocumentsContract.createDocument(getContentResolver(), parent, "video/*", unique);
+                        if (output == null) throw new IOException("파일 생성 실패");
+                        try (InputStream in = new FileInputStream(source);
+                             OutputStream out = getContentResolver().openOutputStream(output, "w")) {
+                            if (out == null) throw new IOException("출력 파일 열기 실패");
+                            byte[] buffer = new byte[65536];
+                            int n;
+                            while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
+                            out.flush();
+                        }
+                        succeeded++;
+                    } catch (Exception e) {
+                        failed++;
+                        if (output != null) try { DocumentsContract.deleteDocument(getContentResolver(), output); } catch (Exception ignored) { }
+                    }
+                    final int done = i + 1;
+                    runOnUiThread(() -> {
+                        progressBar.setProgress(done * 100 / snapshot.length());
+                        progressLabel.setText("전체 다운로드 " + done + " / " + snapshot.length());
+                    });
+                }
+            } catch (Exception e) { failed += snapshot.length() - succeeded - failed; }
+            final int ok = succeeded, errors = failed;
+            runOnUiThread(() -> {
+                copying = false;
+                addButton.setEnabled(true);
+                exportAllButton.setEnabled(true);
+                progressLabel.setVisibility(View.GONE);
+                progressBar.setVisibility(View.GONE);
+                toast("다운로드 완료 " + ok + "개 · 실패 " + errors + "개");
+            });
+        }).start();
+    }
 
     private void chooseExportDestination(String id) {
         int i = indexOf(id);
