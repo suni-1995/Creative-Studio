@@ -127,9 +127,24 @@ public class VideoLibraryActivity extends Activity {
         root.addView(topActions, topParams);
         sortSpinner = new Spinner(this);
         String[] sortOptions = {"최신 등록순", "오래된 등록순", "이름 오름차순", "이름 내림차순"};
-        ArrayAdapter<String> sortAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, sortOptions);
+        ArrayAdapter<String> sortAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, sortOptions) {
+            @Override public View getView(int position, View convertView, ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                if (view instanceof TextView) ((TextView) view).setTextColor(foreground);
+                return view;
+            }
+            @Override public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                if (view instanceof TextView) {
+                    ((TextView) view).setTextColor(foreground);
+                    view.setBackgroundColor(surface);
+                }
+                return view;
+            }
+        };
         sortAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sortSpinner.setAdapter(sortAdapter);
+        sortSpinner.setBackground(rounded(surface, stroke, 10));
         sortSpinner.setSelection(0);
         sortSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             public void onNothingSelected(android.widget.AdapterView<?> parent) { }
