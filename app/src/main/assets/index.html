@@ -14867,6 +14867,7 @@ body.bulkSelecting .subsec:not(.hidden){
             const label=document.createElement('div');label.className='v63SecretPlaceholder';label.innerHTML='<span class="v63SecretImage"></span><span class="v63SecretText"><b>비공개 프로젝트</b><small>0000. 00. 00.</small></span>';
             const edit=document.createElement('button');edit.textContent='수정';edit.onclick=e=>{e.stopPropagation();newProject(project)};
             card.append(label,edit);
+            card.onclick=()=>openProject(project.id);
           }else{
             const cover=document.createElement(project.coverImageId?'img':'div');
             cover.className='folderCardCover'+(project.coverImageId?'':' folderCoverFallback');
