@@ -33,6 +33,7 @@ public class DocumentLibraryActivity extends Activity {
   int page=0;
   int volumeStart=0, volumeEnd=0;
   String volumeName="";
+  String sharedVolumeRoot="";
   int renderedEnd=0, renderedStart=0;
   boolean shifting=false;
   boolean vertical=false;
@@ -95,8 +96,27 @@ public class DocumentLibraryActivity extends Activity {
   String display(Uri u){String n="문서.zip";try(android.database.Cursor c=getContentResolver().query(u,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst())n=c.getString(0);}catch(Exception ignored){}return n;}
   void importQueue(ArrayList<Uri> queue,int index){if(index>=queue.size()){busy=false;home();return;}busy=true;Uri uri=queue.get(index);String name=display(uri);if(importStatus==null||importProgress==null)home();importIndex=index+1;importStatus.setVisibility(View.VISIBLE);importProgress.setVisibility(View.VISIBLE);importProgress.setProgress(0);importStatus.setText("ZIP 등록 "+(index+1)+"/"+queue.size()+" · "+name+" · 준비 중");long total=-1;try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.SIZE},null,null,null)){if(c!=null&&c.moveToFirst()&&!c.isNull(0))total=c.getLong(0);}catch(Exception ignored){}final long expected=total;String id=UUID.randomUUID().toString();File dest=new File(folder(),id+".zip"),tmp=new File(folder(),id+".partial");new Thread(()->{try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(tmp)){if(in==null)throw new IOException("파일 읽기 실패");byte[] buf=new byte[65536];int n;long copied=0;int last=-1;while((n=in.read(buf))!=-1){out.write(buf,0,n);copied+=n;int percent=expected>0?(int)Math.min(99,copied*100/expected):-1;if(percent!=last){last=percent;final int progress=percent;runOnUiThread(()->{if(importStatus!=null)importStatus.setText("ZIP 등록 "+(index+1)+"/"+queue.size()+" · "+name+" · "+(progress<0?"복사 중":progress+"%"));if(importProgress!=null){importProgress.setIndeterminate(progress<0);if(progress>=0)importProgress.setProgress(progress);}});}}runOnUiThread(()->{if(importStatus!=null)importStatus.setText("ZIP 검사 중 · "+name);if(importProgress!=null)importProgress.setIndeterminate(true);});if(!tmp.renameTo(dest))throw new IOException("파일 저장 실패");ArrayList<String> entries=entries(dest);if(entries.isEmpty())throw new IOException("이미지 파일이 없습니다");JSONObject b=new JSONObject();b.put("id",id);b.put("title",name.replaceFirst("(?i)\\.zip$",""));b.put("group",name.replaceFirst("(?i)([ _-]*\\d+\\s*권)?\\.zip$","").trim());b.put("count",entries.size());runOnUiThread(()->{books.put(b);save();importQueue(queue,index+1);});}catch(Exception e){dest.delete();tmp.delete();runOnUiThread(()->{toast(name+": "+e.getMessage());importQueue(queue,index+1);});}}).start();}
   ArrayList<String> entries(File zip)throws IOException{ArrayList<String> a=new ArrayList<>();try(ZipFile z=new ZipFile(zip)){Enumeration<? extends ZipEntry> en=z.entries();while(en.hasMoreElements()){ZipEntry e=en.nextElement();String n=e.getName();if(!e.isDirectory()&&n.matches("(?i).*\\.(jpg|jpeg|png)$")&&!n.startsWith("__MACOSX/"))a.add(n);}}a.sort(DocumentLibraryActivity::natural);return a;}
-  void openBook(String id){JSONObject b=book(id);if(b==null)return;File f=file(b);if(f==null||!f.exists()){toast("ZIP 파일이 없습니다.");return;}currentBook=id;currentZip=f;new Thread(()->{try{ArrayList<String> p=entries(f);runOnUiThread(()->{pages=p;page=Math.min(Math.max(0,getSharedPreferences(PREF,0).getInt("page_"+id,0)),Math.max(0,p.size()-1));vertical=false;setVolume(page);volumeScreen(b);});}catch(Exception e){runOnUiThread(()->toast("ZIP을 읽지 못했습니다."));}}).start();}
-  String folderName(int index){String n=pages.get(index);int slash=n.indexOf('/');return slash>0?n.substring(0,slash):"";}
+  void openBook(String id){JSONObject b=book(id);if(b==null)return;File f=file(b);if(f==null||!f.exists()){toast("ZIP 파일이 없습니다.");return;}currentBook=id;currentZip=f;new Thread(()->{try{ArrayList<String> p=entries(f);runOnUiThread(()->{pages=p;detectVolumeRoot();pages.sort((left,right)->natural(relativeVolumePath(left),relativeVolumePath(right)));page=Math.min(Math.max(0,getSharedPreferences(PREF,0).getInt("page_"+id,0)),Math.max(0,pages.size()-1));vertical=false;setVolume(page);volumeScreen(b);});}catch(Exception e){runOnUiThread(()->toast("ZIP을 읽지 못했습니다."));}}).start();}
+  // A single wrapper directory around several stories is not itself a volume.
+  void detectVolumeRoot(){
+    sharedVolumeRoot="";
+    if(pages.isEmpty())return;
+    String first=pages.get(0);
+    int slash=first.indexOf('/');
+    if(slash<=0)return;
+    String prefix=first.substring(0,slash+1);
+    HashSet<String> childFolders=new HashSet<>();
+    for(String name:pages){
+      if(!name.startsWith(prefix))return;
+      String relative=name.substring(prefix.length());
+      int childSlash=relative.indexOf('/');
+      if(childSlash<=0)return;
+      childFolders.add(relative.substring(0,childSlash));
+    }
+    if(childFolders.size()>1)sharedVolumeRoot=prefix;
+  }
+  String relativeVolumePath(String name){return name.startsWith(sharedVolumeRoot)?name.substring(sharedVolumeRoot.length()):name;}
+  String folderName(int index){String n=relativeVolumePath(pages.get(index));int slash=n.indexOf('/');return slash>0?n.substring(0,slash):"";}
   void setVolume(int index){
     if(pages.isEmpty()){volumeStart=volumeEnd=0;volumeName="";return;}
     volumeName=folderName(Math.max(0,Math.min(index,pages.size()-1)));
@@ -157,7 +177,7 @@ public class DocumentLibraryActivity extends Activity {
   }
   void chooseFolder(JSONObject b,View anchor){
     ArrayList<String> folders=new ArrayList<>();
-    for(String name:pages){int slash=name.indexOf('/');if(slash>0){String folder=name.substring(0,slash);if(!folders.contains(folder))folders.add(folder);}}
+    for(int index=0;index<pages.size();index++){String folder=folderName(index);if(!folder.isEmpty()&&!folders.contains(folder))folders.add(folder);}
     folders.sort(DocumentLibraryActivity::natural);
     if(folders.isEmpty()){toast("폴더로 나뉜 권이 없습니다.");return;}
     PopupMenu popup=new PopupMenu(this,anchor);
