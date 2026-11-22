@@ -90,7 +90,18 @@ public class DocumentLibraryActivity extends Activity {
     LinearLayout.LayoutParams middle=new LinearLayout.LayoutParams(0,dp(48),1);middle.rightMargin=dp(8);controls.addView(mode,middle);
     controls.addView(folders,new LinearLayout.LayoutParams(0,dp(48),1));
     reader=new LinearLayout(this);reader.setOrientation(1);reader.setGravity(Gravity.CENTER_HORIZONTAL);
-    scroll=new ScrollView(this);scroll.setFillViewport(!vertical);LinearLayout.LayoutParams scrollParams=new LinearLayout.LayoutParams(-1,0,1);scrollParams.topMargin=dp(16);root.addView(scroll,scrollParams);scroll.addView(reader);
+    LinearLayout.LayoutParams viewportParams=new LinearLayout.LayoutParams(-1,0,1);
+    viewportParams.topMargin=dp(16);
+    if(vertical){
+      scroll=new ScrollView(this);
+      root.addView(scroll,viewportParams);
+      scroll.addView(reader);
+    }else{
+      scroll=null;
+      android.widget.FrameLayout viewport=new android.widget.FrameLayout(this);
+      root.addView(viewport,viewportParams);
+      viewport.addView(reader,new android.widget.FrameLayout.LayoutParams(-1,-1));
+    }
     pageSeek=null;seekLabel=null;
     if(!vertical){
       LinearLayout seekRow=new LinearLayout(this);seekRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -123,10 +134,10 @@ public class DocumentLibraryActivity extends Activity {
   }
   void remember(){if(currentBook!=null)getSharedPreferences(PREF,0).edit().putInt("page_"+currentBook,page).apply();}
   void renderPages(){
-    scroll.setOnScrollChangeListener((View.OnScrollChangeListener)null);
+    if(scroll!=null)scroll.setOnScrollChangeListener((View.OnScrollChangeListener)null);
     reader.removeAllViews();if(pages.isEmpty())return;
     if(!vertical&&pageSeek!=null){pageSeek.setProgress(Math.max(0,page-volumeStart));seekLabel.setText((page-volumeStart+1)+" / "+(volumeEnd-volumeStart));}
-    reader.setPadding(0,dp(24),0,dp(20));
+    reader.setPadding(0,vertical?dp(24):0,0,vertical?dp(20):0);
     reader.setGravity(vertical?Gravity.CENTER_HORIZONTAL:Gravity.CENTER);
     if(vertical){
       // Keep a bounded, reversible window. Pages removed at the top must be
