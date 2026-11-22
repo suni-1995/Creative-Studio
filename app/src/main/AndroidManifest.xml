@@ -28,6 +28,7 @@
             android:name=".MusicPlaybackService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+        <activity android:name=".DocumentLibraryActivity" android:exported="false" />
         <activity android:name=".VideoLibraryActivity" android:exported="false" />
         <activity android:name=".VideoPlayerActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity
