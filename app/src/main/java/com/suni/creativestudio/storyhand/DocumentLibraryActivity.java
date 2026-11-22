@@ -34,6 +34,7 @@ public class DocumentLibraryActivity extends Activity {
   boolean shifting=false;
   boolean vertical=true;
   File currentZip;
+  Button folderButton;
   LinearLayout reader;
   ScrollView scroll;
   int dp(int v){return (int)(v*getResources().getDisplayMetrics().density+.5f);}
@@ -51,7 +52,7 @@ public class DocumentLibraryActivity extends Activity {
   void row(LinearLayout parent,String title,String subtitle,Runnable action,String menuId){
     LinearLayout box=new LinearLayout(this);box.setGravity(Gravity.CENTER_VERTICAL);box.setPadding(dp(12),dp(5),dp(8),dp(5));box.setBackground(shape(surface));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(76));lp.bottomMargin=dp(8);parent.addView(box,lp);
     LinearLayout label=new LinearLayout(this);label.setOrientation(1);TextView a=text(title,15,true);a.setSingleLine(true);a.setEllipsize(android.text.TextUtils.TruncateAt.END);label.addView(a);TextView s=text(subtitle,12,false);s.setTextColor(muted);label.addView(s);box.addView(label,new LinearLayout.LayoutParams(0,-2,1));label.setOnClickListener(v->action.run());
-    if(menuId!=null){Button more=button("⋮",()->{});more.setOnClickListener(v->bookMenuPopup(more,menuId));box.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));}
+    if(menuId!=null){Button read=button("읽기",action);LinearLayout.LayoutParams readParams=new LinearLayout.LayoutParams(dp(64),dp(48));readParams.rightMargin=dp(6);box.addView(read,readParams);Button more=button("⋮",()->{});more.setOnClickListener(v->bookMenuPopup(more,menuId));box.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));}
   }
   void home(){currentBook=null;shell("문서뷰어");LinearLayout bar=new LinearLayout(this);root.addView(bar);Button add=button("＋ ZIP 등록",()->pick());bar.addView(add,new LinearLayout.LayoutParams(0,dp(48),1));Button all=button("전체 다운로드",()->exportAll());LinearLayout.LayoutParams allParams=new LinearLayout.LayoutParams(0,dp(48),1);allParams.leftMargin=dp(8);bar.addView(all,allParams);importStatus=text("",13,false);importStatus.setTextColor(muted);importStatus.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importStatus);importProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);importProgress.setMax(100);importProgress.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importProgress,new LinearLayout.LayoutParams(-1,dp(8)));ScrollView sc=new ScrollView(this);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));list=new LinearLayout(this);list.setPadding(0,dp(12),0,0);list.setOrientation(1);sc.addView(list);if(books.length()==0)list.addView(text("등록된 ZIP이 없습니다.",14,false));LinkedHashMap<String,ArrayList<JSONObject>> grouped=new LinkedHashMap<>();for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b==null)continue;String group=b.optString("group","미분류");if(!grouped.containsKey(group))grouped.put(group,new ArrayList<>());grouped.get(group).add(b);}for(String group:grouped.keySet()){TextView heading=text("📚 "+group,18,true);heading.setPadding(0,dp(14),0,dp(8));list.addView(heading);ArrayList<JSONObject> volumes=grouped.get(group);volumes.sort((a,b)->natural(a.optString("title"),b.optString("title")));for(JSONObject b:volumes){String id=b.optString("id");row(list,b.optString("title"),"ZIP · "+b.optInt("count")+"장",()->openBook(id),id);}}}
   static int natural(String a,String b){java.util.regex.Matcher x=java.util.regex.Pattern.compile("\\d+|\\D+").matcher(a.toLowerCase(Locale.ROOT)),y=java.util.regex.Pattern.compile("\\d+|\\D+").matcher(b.toLowerCase(Locale.ROOT));while(x.find()&&y.find()){String p=x.group(),q=y.group();int c;if(p.matches("\\d+")&&q.matches("\\d+")){c=Integer.compare(p.length(),q.length());if(c==0)c=p.compareTo(q);}else c=p.compareTo(q);if(c!=0)return c;}return a.compareToIgnoreCase(b);}
@@ -82,7 +83,7 @@ public class DocumentLibraryActivity extends Activity {
     if(b==null)return;
     shell(b.optString("title")+(volumeName.isEmpty()?"":" · "+volumeName));
     LinearLayout controls=new LinearLayout(this);controls.setGravity(Gravity.CENTER_VERTICAL);root.addView(controls);
-    Button back=button("← 서재",()->home()),mode=button(vertical?"세로 스크롤":"페이지 넘기기",()->{vertical=!vertical;getSharedPreferences(PREF,0).edit().putBoolean("vertical",vertical).apply();volumeScreen(b);}),folders=button("권 목록",()->chooseFolder(b));
+    Button back=button("← 서재",()->home()),mode=button(vertical?"세로 스크롤":"페이지 넘기기",()->{vertical=!vertical;getSharedPreferences(PREF,0).edit().putBoolean("vertical",vertical).apply();volumeScreen(b);}),folders=button("권 목록",()->chooseFolder(b,folderButton));folderButton=folders;
     LinearLayout.LayoutParams first=new LinearLayout.LayoutParams(0,dp(48),1);first.rightMargin=dp(8);controls.addView(back,first);
     LinearLayout.LayoutParams middle=new LinearLayout.LayoutParams(0,dp(48),1);middle.rightMargin=dp(8);controls.addView(mode,middle);
     controls.addView(folders,new LinearLayout.LayoutParams(0,dp(48),1));
@@ -90,12 +91,11 @@ public class DocumentLibraryActivity extends Activity {
     scroll=new ScrollView(this);scroll.setFillViewport(!vertical);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));scroll.addView(reader);
     renderPages();
   }
-  void chooseFolder(JSONObject b){
+  void chooseFolder(JSONObject b,View anchor){
     ArrayList<String> folders=new ArrayList<>();
     for(String name:pages){int slash=name.indexOf('/');if(slash>0){String folder=name.substring(0,slash);if(!folders.contains(folder))folders.add(folder);}}
     folders.sort(DocumentLibraryActivity::natural);
     if(folders.isEmpty()){toast("폴더로 나뉜 권이 없습니다.");return;}
-    View anchor=root.getChildAt(1);
     PopupMenu popup=new PopupMenu(this,anchor);
     for(int i=0;i<folders.size();i++){final String folder=folders.get(i);popup.getMenu().add(folder).setOnMenuItemClickListener(item->{for(int j=0;j<pages.size();j++)if(folder.equals(folderName(j))){page=j;setVolume(page);remember();volumeScreen(b);break;}return true;});}
     popup.show();
@@ -144,7 +144,6 @@ public class DocumentLibraryActivity extends Activity {
   void bookMenuPopup(View anchor,String id){
     JSONObject b=book(id);if(b==null)return;
     PopupMenu menu=new PopupMenu(this,anchor);
-    menu.getMenu().add("읽기").setOnMenuItemClickListener(item->{openBook(id);return true;});
     menu.getMenu().add("작품 묶기 / 이름 변경").setOnMenuItemClickListener(item->{edit(b);return true;});
     menu.getMenu().add("ZIP 다운로드").setOnMenuItemClickListener(item->{exportOne(id);return true;});
     menu.getMenu().add("삭제").setOnMenuItemClickListener(item->{new AlertDialog.Builder(this).setMessage("이 ZIP을 앱에서 삭제할까요?").setNegativeButton("취소",null).setPositiveButton("삭제",(x,y)->{File f=file(b);if(f!=null)f.delete();JSONArray next=new JSONArray();for(int j=0;j<books.length();j++)if(!id.equals(books.optJSONObject(j).optString("id")))next.put(books.optJSONObject(j));books=next;save();home();}).show();return true;});
