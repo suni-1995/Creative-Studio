@@ -18,7 +18,10 @@ public class DocumentLibraryActivity extends Activity {
   static final int PICK=101, EXPORT=102, EXPORT_ALL=103;
   final String PREF="document_library_v1";
   JSONArray books=new JSONArray();
-  LinearLayout root, list;
+  LinearLayout root, list, selectionBar;
+  TextView selectionCount;
+  boolean selectionMode=false;
+  final LinkedHashSet<String> selected=new LinkedHashSet<>();
   int bg, surface, ink, muted, line, accent;
   boolean dark, busy=false;
   TextView importStatus;
@@ -51,12 +54,41 @@ public class DocumentLibraryActivity extends Activity {
   void colors(){dark=getSharedPreferences("creative_studio_prefs",0).getBoolean("dark_mode",false);bg=Color.parseColor(dark?"#17171B":"#F5F4F2");surface=Color.parseColor(dark?"#211F25":"#FFFFFF");ink=Color.parseColor(dark?"#F2F1F5":"#242328");muted=Color.parseColor(dark?"#A6A2AD":"#77737D");line=Color.parseColor(dark?"#38353F":"#E5E2DF");accent=Color.parseColor(dark?"#8F83AB":"#5D5870");getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);getWindow().getDecorView().setSystemUiVisibility(dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);}
   @Override public void onCreate(Bundle b){super.onCreate(b);colors();load();vertical=false;home();}
   void shell(String title){root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(16),dp(12),dp(16),dp(12));root.setBackgroundColor(bg);setContentView(root);TextView h=text(title,23,true);root.addView(h,new LinearLayout.LayoutParams(-1,dp(52)));}
-  void row(LinearLayout parent,String title,String subtitle,Runnable action,String menuId){
-    LinearLayout box=new LinearLayout(this);box.setGravity(Gravity.CENTER_VERTICAL);box.setPadding(dp(12),dp(5),dp(8),dp(5));box.setBackground(shape(surface));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(76));lp.bottomMargin=dp(8);parent.addView(box,lp);
-    LinearLayout label=new LinearLayout(this);label.setOrientation(1);TextView a=text(title,15,true);a.setSingleLine(true);a.setEllipsize(android.text.TextUtils.TruncateAt.END);label.addView(a);TextView s=text(subtitle,12,false);s.setTextColor(muted);label.addView(s);box.addView(label,new LinearLayout.LayoutParams(0,-2,1));label.setOnClickListener(v->action.run());
-    if(menuId!=null){Button read=button("읽기",action);LinearLayout.LayoutParams readParams=new LinearLayout.LayoutParams(dp(64),dp(48));readParams.rightMargin=dp(6);box.addView(read,readParams);Button more=button("⋮",()->{});more.setOnClickListener(v->bookMenuPopup(more,menuId));box.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));}
+  void toggleSelection(String id){selectionMode=true;if(!selected.add(id))selected.remove(id);home();}
+  void exitSelection(){selectionMode=false;selected.clear();home();}
+  void selectAll(){for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b!=null)selected.add(b.optString("id"));}home();}
+  void confirmSelectedDelete(){
+    if(selected.isEmpty()){toast("선택한 문서가 없습니다.");return;}
+    new AlertDialog.Builder(this).setTitle("선택 문서 삭제").setMessage(selected.size()+"개 ZIP 문서를 앱에서 삭제할까요? 원본은 삭제되지 않습니다.")
+      .setNegativeButton("취소",null).setPositiveButton("삭제",(d,w)->{
+        JSONArray kept=new JSONArray();int failed=0;
+        for(int i=0;i<books.length();i++){
+          JSONObject b=books.optJSONObject(i);if(b==null)continue;
+          String id=b.optString("id");
+          if(!selected.contains(id)){kept.put(b);continue;}
+          File target=file(b);
+          if(target==null||(target.exists()&&!target.delete())){failed++;kept.put(b);continue;}
+          getSharedPreferences(PREF,0).edit().remove("page_"+id).apply();
+        }
+        books=kept;save();if(failed>0)toast(failed+"개 문서를 삭제하지 못했습니다.");exitSelection();
+      }).show();
   }
-  void home(){currentBook=null;shell("문서뷰어");LinearLayout bar=new LinearLayout(this);root.addView(bar);Button add=button("＋ ZIP 등록",()->pick());bar.addView(add,new LinearLayout.LayoutParams(0,dp(48),1));Button all=button("전체 다운로드",()->exportAll());LinearLayout.LayoutParams allParams=new LinearLayout.LayoutParams(0,dp(48),1);allParams.leftMargin=dp(8);bar.addView(all,allParams);importStatus=text("",13,false);importStatus.setTextColor(muted);importStatus.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importStatus);importProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);importProgress.setMax(100);importProgress.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importProgress,new LinearLayout.LayoutParams(-1,dp(8)));ScrollView sc=new ScrollView(this);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));list=new LinearLayout(this);list.setPadding(0,dp(12),0,0);list.setOrientation(1);sc.addView(list);if(books.length()==0)list.addView(text("등록된 ZIP이 없습니다.",14,false));LinkedHashMap<String,ArrayList<JSONObject>> grouped=new LinkedHashMap<>();for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b==null)continue;String group=b.optString("group","미분류");if(!grouped.containsKey(group))grouped.put(group,new ArrayList<>());grouped.get(group).add(b);}for(String group:grouped.keySet()){TextView heading=text("📚 "+group,18,true);heading.setPadding(0,dp(14),0,dp(8));list.addView(heading);ArrayList<JSONObject> volumes=grouped.get(group);volumes.sort((a,b)->natural(a.optString("title"),b.optString("title")));for(JSONObject b:volumes){String id=b.optString("id");row(list,b.optString("title"),"ZIP · "+b.optInt("count")+"장",()->openBook(id),id);}}}
+  void selectionFooter(){
+    selectionBar=new LinearLayout(this);selectionBar.setOrientation(1);selectionBar.setPadding(dp(10),dp(10),dp(10),dp(10));selectionBar.setBackground(shape(surface));
+    selectionCount=text(selected.size()+"개 선택",15,true);selectionBar.addView(selectionCount,new LinearLayout.LayoutParams(-1,dp(32)));
+    LinearLayout actions=new LinearLayout(this);selectionBar.addView(actions);
+    for(String label:new String[]{"취소","전체선택","삭제하기"}){
+      Button b=button(label,()->{if(label.equals("취소"))exitSelection();else if(label.equals("전체선택"))selectAll();else confirmSelectedDelete();});
+      LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(48),1);p.rightMargin=dp(5);actions.addView(b,p);
+    }
+    root.addView(selectionBar);selectionBar.setVisibility(selectionMode?View.VISIBLE:View.GONE);
+  }
+  void row(LinearLayout parent,String title,String subtitle,Runnable action,String menuId){
+    LinearLayout box=new LinearLayout(this);box.setGravity(Gravity.CENTER_VERTICAL);box.setPadding(dp(12),dp(5),dp(8),dp(5));box.setBackground(shape(surface));if(menuId!=null&&selected.contains(menuId)){GradientDrawable chosen=shape(surface);chosen.setStroke(dp(2),accent);box.setBackground(chosen);TextView tick=text("✓",19,true);tick.setTextColor(Color.WHITE);tick.setGravity(Gravity.CENTER);GradientDrawable circle=new GradientDrawable();circle.setColor(accent);circle.setCornerRadius(dp(30));tick.setBackground(circle);LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(dp(32),dp(32));tp.rightMargin=dp(12);box.addView(tick,tp);}if(menuId!=null){box.setOnLongClickListener(v->{toggleSelection(menuId);return true;});box.setOnClickListener(v->{if(selectionMode)toggleSelection(menuId);});}LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(76));lp.bottomMargin=dp(8);parent.addView(box,lp);
+    LinearLayout label=new LinearLayout(this);label.setOrientation(1);TextView a=text(title,15,true);a.setSingleLine(true);a.setEllipsize(android.text.TextUtils.TruncateAt.END);label.addView(a);TextView s=text(subtitle,12,false);s.setTextColor(muted);label.addView(s);box.addView(label,new LinearLayout.LayoutParams(0,-2,1));label.setOnClickListener(v->{if(selectionMode&&menuId!=null)toggleSelection(menuId);else action.run();});if(menuId!=null)label.setOnLongClickListener(v->{toggleSelection(menuId);return true;});
+    if(menuId!=null){Button read=button("읽기",()->{if(selectionMode)toggleSelection(menuId);else action.run();});LinearLayout.LayoutParams readParams=new LinearLayout.LayoutParams(dp(64),dp(48));readParams.rightMargin=dp(6);box.addView(read,readParams);Button more=button("⋮",()->{});more.setOnClickListener(v->{if(selectionMode)toggleSelection(menuId);else bookMenuPopup(more,menuId);});more.setOnLongClickListener(v->{toggleSelection(menuId);return true;});box.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));}
+  }
+  void home(){currentBook=null;shell("문서뷰어");LinearLayout bar=new LinearLayout(this);root.addView(bar);Button add=button("＋ ZIP 등록",()->pick());bar.addView(add,new LinearLayout.LayoutParams(0,dp(48),1));Button all=button("전체 다운로드",()->exportAll());LinearLayout.LayoutParams allParams=new LinearLayout.LayoutParams(0,dp(48),1);allParams.leftMargin=dp(8);bar.addView(all,allParams);importStatus=text("",13,false);importStatus.setTextColor(muted);importStatus.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importStatus);importProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);importProgress.setMax(100);importProgress.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importProgress,new LinearLayout.LayoutParams(-1,dp(8)));ScrollView sc=new ScrollView(this);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));list=new LinearLayout(this);list.setPadding(0,dp(12),0,0);list.setOrientation(1);sc.addView(list);if(books.length()==0)list.addView(text("등록된 ZIP이 없습니다.",14,false));LinkedHashMap<String,ArrayList<JSONObject>> grouped=new LinkedHashMap<>();for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b==null)continue;String group=b.optString("group","미분류");if(!grouped.containsKey(group))grouped.put(group,new ArrayList<>());grouped.get(group).add(b);}for(String group:grouped.keySet()){TextView heading=text("📚 "+group,18,true);heading.setPadding(0,dp(14),0,dp(8));list.addView(heading);ArrayList<JSONObject> volumes=grouped.get(group);volumes.sort((a,b)->natural(a.optString("title"),b.optString("title")));for(JSONObject b:volumes){String id=b.optString("id");row(list,b.optString("title"),"ZIP · "+b.optInt("count")+"장",()->openBook(id),id);}}selectionFooter();}
   static int natural(String a,String b){java.util.regex.Matcher x=java.util.regex.Pattern.compile("\\d+|\\D+").matcher(a.toLowerCase(Locale.ROOT)),y=java.util.regex.Pattern.compile("\\d+|\\D+").matcher(b.toLowerCase(Locale.ROOT));while(x.find()&&y.find()){String p=x.group(),q=y.group();int c;if(p.matches("\\d+")&&q.matches("\\d+")){c=Integer.compare(p.length(),q.length());if(c==0)c=p.compareTo(q);}else c=p.compareTo(q);if(c!=0)return c;}return a.compareToIgnoreCase(b);}
   void pick(){if(busy)return;Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);startActivityForResult(i,PICK);}
   @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result!=RESULT_OK||data==null)return;if(request==PICK){ArrayList<Uri> u=new ArrayList<>();if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)u.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)u.add(data.getData());importQueue(u,0);}else if(request==EXPORT&&exportId!=null&&data.getData()!=null){JSONObject b=book(exportId);exportId=null;if(b!=null)copyOut(b,data.getData());}else if(request==EXPORT_ALL&&data.getData()!=null)allToFolder(data.getData());}
@@ -220,5 +252,5 @@ public class DocumentLibraryActivity extends Activity {
   void exportAll(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);startActivityForResult(i,EXPORT_ALL);}
   void allToFolder(Uri tree){new Thread(()->{int success=0;try{Uri parent=DocumentsContract.buildDocumentUriUsingTree(tree,DocumentsContract.getTreeDocumentId(tree));HashSet<String> used=new HashSet<>();for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);File src=file(b);if(src==null||!src.exists())continue;String name=(b.optString("group")+" - "+b.optString("title")).replaceAll("[\\\\/:*?\"<>|]","_")+".zip";String base=name;int n=2;while(!used.add(name.toLowerCase(Locale.ROOT)))name=base.replace(".zip"," ("+(n++)+").zip");Uri dest=DocumentsContract.createDocument(getContentResolver(),parent,"application/zip",name);if(dest==null)continue;try(InputStream in=new FileInputStream(src);OutputStream out=getContentResolver().openOutputStream(dest)){byte[] buf=new byte[65536];int len;while((len=in.read(buf))!=-1)out.write(buf,0,len);success++;}}int total=success;runOnUiThread(()->toast(total+"개 ZIP 다운로드 완료"));}catch(Exception e){runOnUiThread(()->toast("다운로드 중 오류: "+e.getMessage()));}}).start();}
   void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
-  @Override public void onBackPressed(){if(currentBook!=null)home();else super.onBackPressed();}
+  @Override public void onBackPressed(){if(selectionMode){exitSelection();return;}if(currentBook!=null)home();else super.onBackPressed();}
 }
