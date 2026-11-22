@@ -30,7 +30,7 @@ public class DocumentLibraryActivity extends Activity {
   int page=0;
   int volumeStart=0, volumeEnd=0;
   String volumeName="";
-  int renderedEnd=0;
+  int renderedEnd=0, renderedStart=0;
   boolean shifting=false;
   boolean vertical=true;
   File currentZip;
@@ -107,18 +107,22 @@ public class DocumentLibraryActivity extends Activity {
     reader.setPadding(0,dp(24),0,dp(20));
     reader.setGravity(vertical?Gravity.CENTER_HORIZONTAL:Gravity.CENTER);
     if(vertical){
-      // Only a small bounded window is attached at once to avoid unbounded bitmap memory.
+      // Keep a bounded, reversible window. Pages removed at the top must be
+      // restored when scrolling upward, rather than permanently discarded.
       renderedEnd=page;
+      renderedStart=page;
       appendWindow();
       scroll.setOnScrollChangeListener((View.OnScrollChangeListener)(v,x,y,ox,oy)->{
         if(shifting)return;
         View child=scroll.getChildAt(0);if(child==null)return;
-        if(child.getHeight()-y-scroll.getHeight()<dp(650)&&renderedEnd<volumeEnd)appendWindow();
-        // Reclaim old views when the user moves far enough into the current window.
-        if(renderedEnd<volumeEnd&&reader.getChildCount()>7&&y>dp(1300)){
-          View first=reader.getChildAt(0);
-          int height=first.getHeight();
-          if(height>0){shifting=true;reader.removeViewAt(0);page=Math.min(renderedEnd-1,page+1);remember();scroll.post(()->{scroll.scrollTo(0,Math.max(0,y-height));shifting=false;});}
+        if(child.getHeight()-y-scroll.getHeight()<dp(700)&&renderedEnd<volumeEnd)appendWindow();
+        if(y<dp(650)&&renderedStart>volumeStart)prependWindow();
+        if(reader.getChildCount()>9&&y>dp(1800)&&renderedEnd<volumeEnd){
+          View first=reader.getChildAt(0);int height=first.getHeight();
+          if(height>0){
+            shifting=true;reader.removeViewAt(0);renderedStart++;page=renderedStart;remember();
+            scroll.post(()->{scroll.scrollTo(0,Math.max(0,y-height));shifting=false;});
+          }
         }
       });
     }else{
@@ -140,7 +144,29 @@ public class DocumentLibraryActivity extends Activity {
       LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,dp(52),1);left.rightMargin=dp(8);nav.addView(previous,left);nav.addView(next,new LinearLayout.LayoutParams(0,dp(52),1));
     }
   }
-  void addImage(int index){ImageView image=new ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(ImageView.ScaleType.FIT_CENTER);reader.addView(image,new LinearLayout.LayoutParams(-1,-2));String name=pages.get(index);File zip=currentZip;new Thread(()->{try(ZipFile z=new ZipFile(zip)){ZipEntry e=z.getEntry(name);if(e==null)return;BitmapFactory.Options o=new BitmapFactory.Options();o.inJustDecodeBounds=true;try(InputStream in=z.getInputStream(e)){BitmapFactory.decodeStream(in,null,o);}o.inSampleSize=1;while(o.outWidth/o.inSampleSize>1600||o.outHeight/o.inSampleSize>3000)o.inSampleSize*=2;o.inJustDecodeBounds=false;Bitmap bmp;try(InputStream in=z.getInputStream(e)){bmp=BitmapFactory.decodeStream(in,null,o);}runOnUiThread(()->{if(image.getParent()!=null)image.setImageBitmap(bmp);else if(bmp!=null)bmp.recycle();});}catch(Exception ignored){} }).start();}
+  void prependWindow(){
+    if(shifting||renderedStart<=volumeStart)return;
+    // Insert before the first visible page, retaining the user's viewport.
+    shifting=true;
+    int oldY=scroll.getScrollY();
+    int oldHeight=reader.getHeight();
+    int start=Math.max(volumeStart,renderedStart-2);
+    for(int i=renderedStart-1;i>=start;i--)addImageAt(i,0);
+    renderedStart=start;page=start;remember();
+    reader.requestLayout();
+    reader.post(()->{
+      int delta=Math.max(0,reader.getHeight()-oldHeight);
+      scroll.scrollTo(0,oldY+delta);
+      shifting=false;
+    });
+  }
+  void addImageAt(int index,int position){
+    ImageView image=new ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+    reader.addView(image,position,new LinearLayout.LayoutParams(-1,-2));
+    loadImage(index,image);
+  }
+  void addImage(int index){ImageView image=new ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(ImageView.ScaleType.FIT_CENTER);reader.addView(image,new LinearLayout.LayoutParams(-1,-2));loadImage(index,image);}
+  void loadImage(int index,ImageView image){String name=pages.get(index);File zip=currentZip;new Thread(()->{try(ZipFile z=new ZipFile(zip)){ZipEntry e=z.getEntry(name);if(e==null)return;BitmapFactory.Options o=new BitmapFactory.Options();o.inJustDecodeBounds=true;try(InputStream in=z.getInputStream(e)){BitmapFactory.decodeStream(in,null,o);}o.inSampleSize=1;while(o.outWidth/o.inSampleSize>1600||o.outHeight/o.inSampleSize>3000)o.inSampleSize*=2;o.inJustDecodeBounds=false;Bitmap bmp;try(InputStream in=z.getInputStream(e)){bmp=BitmapFactory.decodeStream(in,null,o);}runOnUiThread(()->{if(image.getParent()!=null)image.setImageBitmap(bmp);else if(bmp!=null)bmp.recycle();});}catch(Exception ignored){} }).start();}
   void bookMenuPopup(View anchor,String id){
     JSONObject b=book(id);if(b==null)return;
     PopupMenu menu=new PopupMenu(this,anchor);
