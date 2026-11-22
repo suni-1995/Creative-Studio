@@ -1237,6 +1237,10 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void requestProjectAlarmNotificationPermission() { if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},REQ_PROJECT_ALARM_NOTIFICATION)); }
         @JavascriptInterface
+        public void openDocumentLibrary() {
+            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, DocumentLibraryActivity.class)));
+        }
+        @JavascriptInterface
         public void openVideoLibrary() {
             runOnUiThread(() -> startActivity(new Intent(MainActivity.this, VideoLibraryActivity.class)));
         }
