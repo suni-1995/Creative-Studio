@@ -88,7 +88,7 @@ public class DocumentLibraryActivity extends Activity {
     LinearLayout.LayoutParams middle=new LinearLayout.LayoutParams(0,dp(48),1);middle.rightMargin=dp(8);controls.addView(mode,middle);
     controls.addView(folders,new LinearLayout.LayoutParams(0,dp(48),1));
     reader=new LinearLayout(this);reader.setOrientation(1);reader.setGravity(Gravity.CENTER_HORIZONTAL);
-    scroll=new ScrollView(this);scroll.setFillViewport(!vertical);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));scroll.addView(reader);
+    scroll=new ScrollView(this);scroll.setFillViewport(!vertical);LinearLayout.LayoutParams scrollParams=new LinearLayout.LayoutParams(-1,0,1);scrollParams.topMargin=dp(16);root.addView(scroll,scrollParams);scroll.addView(reader);
     renderPages();
   }
   void chooseFolder(JSONObject b,View anchor){
@@ -162,10 +162,10 @@ public class DocumentLibraryActivity extends Activity {
   }
   void addImageAt(int index,int position){
     ImageView image=new ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-    reader.addView(image,position,new LinearLayout.LayoutParams(-1,-2));
+    LinearLayout.LayoutParams imageParams=new LinearLayout.LayoutParams(-1,-2);if(vertical)imageParams.bottomMargin=5;reader.addView(image,position,imageParams);
     loadImage(index,image);
   }
-  void addImage(int index){ImageView image=new ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(ImageView.ScaleType.FIT_CENTER);reader.addView(image,new LinearLayout.LayoutParams(-1,-2));loadImage(index,image);}
+  void addImage(int index){ImageView image=new ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(ImageView.ScaleType.FIT_CENTER);LinearLayout.LayoutParams imageParams=new LinearLayout.LayoutParams(-1,-2);if(vertical)imageParams.bottomMargin=5;reader.addView(image,imageParams);loadImage(index,image);}
   void loadImage(int index,ImageView image){String name=pages.get(index);File zip=currentZip;new Thread(()->{try(ZipFile z=new ZipFile(zip)){ZipEntry e=z.getEntry(name);if(e==null)return;BitmapFactory.Options o=new BitmapFactory.Options();o.inJustDecodeBounds=true;try(InputStream in=z.getInputStream(e)){BitmapFactory.decodeStream(in,null,o);}o.inSampleSize=1;while(o.outWidth/o.inSampleSize>1600||o.outHeight/o.inSampleSize>3000)o.inSampleSize*=2;o.inJustDecodeBounds=false;Bitmap bmp;try(InputStream in=z.getInputStream(e)){bmp=BitmapFactory.decodeStream(in,null,o);}runOnUiThread(()->{if(image.getParent()!=null)image.setImageBitmap(bmp);else if(bmp!=null)bmp.recycle();});}catch(Exception ignored){} }).start();}
   void bookMenuPopup(View anchor,String id){
     JSONObject b=book(id);if(b==null)return;
