@@ -32,7 +32,9 @@ public class DocumentLibraryActivity extends Activity {
   String volumeName="";
   int renderedEnd=0, renderedStart=0;
   boolean shifting=false;
-  boolean vertical=true;
+  boolean vertical=false;
+  SeekBar pageSeek;
+  TextView seekLabel;
   File currentZip;
   Button folderButton;
   LinearLayout reader;
@@ -47,7 +49,7 @@ public class DocumentLibraryActivity extends Activity {
   File file(JSONObject b){String id=b.optString("id");if(!id.matches("[0-9a-fA-F-]{36}"))return null;return new File(folder(),id+".zip");}
   JSONObject book(String id){for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b!=null&&id.equals(b.optString("id")))return b;}return null;}
   void colors(){dark=getSharedPreferences("creative_studio_prefs",0).getBoolean("dark_mode",false);bg=Color.parseColor(dark?"#17171B":"#F5F4F2");surface=Color.parseColor(dark?"#211F25":"#FFFFFF");ink=Color.parseColor(dark?"#F2F1F5":"#242328");muted=Color.parseColor(dark?"#A6A2AD":"#77737D");line=Color.parseColor(dark?"#38353F":"#E5E2DF");accent=Color.parseColor(dark?"#8F83AB":"#5D5870");getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);getWindow().getDecorView().setSystemUiVisibility(dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);}
-  @Override public void onCreate(Bundle b){super.onCreate(b);colors();load();vertical=getSharedPreferences(PREF,0).getBoolean("vertical",true);home();}
+  @Override public void onCreate(Bundle b){super.onCreate(b);colors();load();vertical=false;home();}
   void shell(String title){root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(16),dp(12),dp(16),dp(12));root.setBackgroundColor(bg);setContentView(root);TextView h=text(title,23,true);root.addView(h,new LinearLayout.LayoutParams(-1,dp(52)));}
   void row(LinearLayout parent,String title,String subtitle,Runnable action,String menuId){
     LinearLayout box=new LinearLayout(this);box.setGravity(Gravity.CENTER_VERTICAL);box.setPadding(dp(12),dp(5),dp(8),dp(5));box.setBackground(shape(surface));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(76));lp.bottomMargin=dp(8);parent.addView(box,lp);
@@ -61,7 +63,7 @@ public class DocumentLibraryActivity extends Activity {
   String display(Uri u){String n="문서.zip";try(android.database.Cursor c=getContentResolver().query(u,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst())n=c.getString(0);}catch(Exception ignored){}return n;}
   void importQueue(ArrayList<Uri> queue,int index){if(index>=queue.size()){busy=false;home();return;}busy=true;Uri uri=queue.get(index);String name=display(uri);if(importStatus==null||importProgress==null)home();importIndex=index+1;importStatus.setVisibility(View.VISIBLE);importProgress.setVisibility(View.VISIBLE);importProgress.setProgress(0);importStatus.setText("ZIP 등록 "+(index+1)+"/"+queue.size()+" · "+name+" · 준비 중");long total=-1;try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.SIZE},null,null,null)){if(c!=null&&c.moveToFirst()&&!c.isNull(0))total=c.getLong(0);}catch(Exception ignored){}final long expected=total;String id=UUID.randomUUID().toString();File dest=new File(folder(),id+".zip"),tmp=new File(folder(),id+".partial");new Thread(()->{try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(tmp)){if(in==null)throw new IOException("파일 읽기 실패");byte[] buf=new byte[65536];int n;long copied=0;int last=-1;while((n=in.read(buf))!=-1){out.write(buf,0,n);copied+=n;int percent=expected>0?(int)Math.min(99,copied*100/expected):-1;if(percent!=last){last=percent;final int progress=percent;runOnUiThread(()->{if(importStatus!=null)importStatus.setText("ZIP 등록 "+(index+1)+"/"+queue.size()+" · "+name+" · "+(progress<0?"복사 중":progress+"%"));if(importProgress!=null){importProgress.setIndeterminate(progress<0);if(progress>=0)importProgress.setProgress(progress);}});}}runOnUiThread(()->{if(importStatus!=null)importStatus.setText("ZIP 검사 중 · "+name);if(importProgress!=null)importProgress.setIndeterminate(true);});if(!tmp.renameTo(dest))throw new IOException("파일 저장 실패");ArrayList<String> entries=entries(dest);if(entries.isEmpty())throw new IOException("이미지 파일이 없습니다");JSONObject b=new JSONObject();b.put("id",id);b.put("title",name.replaceFirst("(?i)\\.zip$",""));b.put("group",name.replaceFirst("(?i)([ _-]*\\d+\\s*권)?\\.zip$","").trim());b.put("count",entries.size());runOnUiThread(()->{books.put(b);save();importQueue(queue,index+1);});}catch(Exception e){dest.delete();tmp.delete();runOnUiThread(()->{toast(name+": "+e.getMessage());importQueue(queue,index+1);});}}).start();}
   ArrayList<String> entries(File zip)throws IOException{ArrayList<String> a=new ArrayList<>();try(ZipFile z=new ZipFile(zip)){Enumeration<? extends ZipEntry> en=z.entries();while(en.hasMoreElements()){ZipEntry e=en.nextElement();String n=e.getName();if(!e.isDirectory()&&n.matches("(?i).*\\.(jpg|jpeg|png)$")&&!n.startsWith("__MACOSX/"))a.add(n);}}a.sort(DocumentLibraryActivity::natural);return a;}
-  void openBook(String id){JSONObject b=book(id);if(b==null)return;File f=file(b);if(f==null||!f.exists()){toast("ZIP 파일이 없습니다.");return;}currentBook=id;currentZip=f;new Thread(()->{try{ArrayList<String> p=entries(f);runOnUiThread(()->{pages=p;page=Math.min(Math.max(0,getSharedPreferences(PREF,0).getInt("page_"+id,0)),Math.max(0,p.size()-1));setVolume(page);volumeScreen(b);});}catch(Exception e){runOnUiThread(()->toast("ZIP을 읽지 못했습니다."));}}).start();}
+  void openBook(String id){JSONObject b=book(id);if(b==null)return;File f=file(b);if(f==null||!f.exists()){toast("ZIP 파일이 없습니다.");return;}currentBook=id;currentZip=f;new Thread(()->{try{ArrayList<String> p=entries(f);runOnUiThread(()->{pages=p;page=Math.min(Math.max(0,getSharedPreferences(PREF,0).getInt("page_"+id,0)),Math.max(0,p.size()-1));vertical=false;setVolume(page);volumeScreen(b);});}catch(Exception e){runOnUiThread(()->toast("ZIP을 읽지 못했습니다."));}}).start();}
   String folderName(int index){String n=pages.get(index);int slash=n.indexOf('/');return slash>0?n.substring(0,slash):"";}
   void setVolume(int index){
     if(pages.isEmpty()){volumeStart=volumeEnd=0;volumeName="";return;}
@@ -89,6 +91,25 @@ public class DocumentLibraryActivity extends Activity {
     controls.addView(folders,new LinearLayout.LayoutParams(0,dp(48),1));
     reader=new LinearLayout(this);reader.setOrientation(1);reader.setGravity(Gravity.CENTER_HORIZONTAL);
     scroll=new ScrollView(this);scroll.setFillViewport(!vertical);LinearLayout.LayoutParams scrollParams=new LinearLayout.LayoutParams(-1,0,1);scrollParams.topMargin=dp(16);root.addView(scroll,scrollParams);scroll.addView(reader);
+    pageSeek=null;seekLabel=null;
+    if(!vertical){
+      LinearLayout seekRow=new LinearLayout(this);seekRow.setGravity(Gravity.CENTER_VERTICAL);
+      LinearLayout.LayoutParams seekRowParams=new LinearLayout.LayoutParams(-1,dp(48));seekRowParams.topMargin=dp(8);root.addView(seekRow,seekRowParams);
+      pageSeek=new SeekBar(this);pageSeek.setMax(Math.max(0,volumeEnd-volumeStart-1));
+      seekRow.addView(pageSeek,new LinearLayout.LayoutParams(0,dp(44),1));
+      seekLabel=text("",12,false);seekLabel.setTextColor(muted);seekLabel.setGravity(Gravity.CENTER);
+      seekRow.addView(seekLabel,new LinearLayout.LayoutParams(dp(78),-1));
+      pageSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+        public void onStartTrackingTouch(SeekBar bar){}
+        public void onProgressChanged(SeekBar bar,int progress,boolean fromUser){
+          if(fromUser)seekLabel.setText((progress+1)+" / "+(volumeEnd-volumeStart));
+        }
+        public void onStopTrackingTouch(SeekBar bar){
+          int target=volumeStart+bar.getProgress();
+          if(target!=page){page=target;remember();renderPages();}
+        }
+      });
+    }
     renderPages();
   }
   void chooseFolder(JSONObject b,View anchor){
@@ -104,6 +125,7 @@ public class DocumentLibraryActivity extends Activity {
   void renderPages(){
     scroll.setOnScrollChangeListener((View.OnScrollChangeListener)null);
     reader.removeAllViews();if(pages.isEmpty())return;
+    if(!vertical&&pageSeek!=null){pageSeek.setProgress(Math.max(0,page-volumeStart));seekLabel.setText((page-volumeStart+1)+" / "+(volumeEnd-volumeStart));}
     reader.setPadding(0,dp(24),0,dp(20));
     reader.setGravity(vertical?Gravity.CENTER_HORIZONTAL:Gravity.CENTER);
     if(vertical){
