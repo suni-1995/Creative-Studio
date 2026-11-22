@@ -54,6 +54,10 @@ public class VideoLibraryActivity extends Activity {
     private String importingName = "";
     private volatile int importingPercent = -1;
     private TextView importingAction;
+    private final java.util.LinkedHashSet<String> selected = new java.util.LinkedHashSet<>();
+    private boolean selectionMode = false;
+    private LinearLayout selectionBar;
+    private TextView selectionCount;
 
     private int dp(float value) { return (int)(value * getResources().getDisplayMetrics().density + .5f); }
     private GradientDrawable rounded(int color, int border, int radius) {
@@ -171,6 +175,23 @@ public class VideoLibraryActivity extends Activity {
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        selectionBar = new LinearLayout(this);
+        selectionBar.setOrientation(LinearLayout.VERTICAL);
+        selectionBar.setPadding(dp(12),dp(10),dp(12),dp(10));
+        selectionBar.setBackground(rounded(surface,stroke,16));
+        selectionCount = text("",15,foreground,true);
+        selectionBar.addView(selectionCount,new LinearLayout.LayoutParams(-1,dp(34)));
+        LinearLayout actions = new LinearLayout(this);
+        for (String label : new String[]{"취소","전체선택","삭제하기"}) {
+            Button b = new Button(this); b.setAllCaps(false); b.setText(label); b.setTextSize(12);
+            b.setTextColor(foreground); b.setBackground(rounded(surface,stroke,12));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0,dp(48),1);p.rightMargin=dp(5);
+            actions.addView(b,p);
+            b.setOnClickListener(v->{ if(label.equals("취소")) exitSelection(); else if(label.equals("전체선택")) selectAll(); else confirmSelectedDelete(); });
+        }
+        selectionBar.addView(actions);
+        root.addView(selectionBar,new LinearLayout.LayoutParams(-1,-2));
+        selectionBar.setVisibility(View.GONE);
         setContentView(root);
         cleanupPartialFiles();
         render();
@@ -322,8 +343,37 @@ public class VideoLibraryActivity extends Activity {
     private boolean save() { return getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY, videos.toString()).commit(); }
     private void toast(String text) { Toast.makeText(this, text, Toast.LENGTH_SHORT).show(); }
 
+    private void toggleSelection(String id) {
+        if (!selectionMode) selectionMode=true;
+        if (!selected.add(id)) selected.remove(id);
+        render();
+    }
+    private void exitSelection() { selectionMode=false;selected.clear();render(); }
+    private void selectAll() {
+        for(int i=0;i<videos.length();i++){JSONObject o=videos.optJSONObject(i);if(o!=null)selected.add(o.optString("id"));}
+        render();
+    }
+    private void confirmSelectedDelete() {
+        if(selected.isEmpty()){toast("선택한 영상이 없습니다.");return;}
+        new AlertDialog.Builder(this).setTitle("선택 영상 삭제").setMessage(selected.size()+"개 영상을 앱에서 삭제할까요? 원본은 삭제되지 않습니다.")
+            .setNegativeButton("취소",null).setPositiveButton("삭제",(d,w)->{
+                int failures=0;
+                for(String id:new ArrayList<>(selected)){
+                    int i=indexOf(id);if(i<0)continue;
+                    JSONObject o=videos.optJSONObject(i);
+                    File file=o==null?null:safeVideoFile(id,o.optString("file"));
+                    if(file==null||(file.exists()&&!file.delete())){failures++;continue;}
+                    videos.remove(i);
+                    getSharedPreferences(PREFS,MODE_PRIVATE).edit().remove("position_"+id).commit();
+                }
+                if(!save())toast("목록 저장에 실패했습니다.");
+                if(failures>0)toast(failures+"개 영상을 삭제하지 못했습니다.");
+                exitSelection();
+            }).show();
+    }
     private void render() {
         list.removeAllViews();
+        if(selectionBar!=null){selectionBar.setVisibility(selectionMode?View.VISIBLE:View.GONE);selectionCount.setText(selected.size()+"개 선택");}
         importingAction = null;
         if (copying && !importingName.isEmpty()) addVideoRow(importingName, null, importingPercent);
         if (videos.length() == 0 && !copying) {
@@ -345,8 +395,11 @@ public class VideoLibraryActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
+        boolean checked = id!=null && selected.contains(id);
         card.setPadding(dp(14), dp(8), dp(10), dp(8));
-        card.setBackground(rounded(surface, stroke, 16));
+        card.setBackground(rounded(surface, checked?accent:stroke, 16));
+        if(checked){TextView tick=text("✓",19,Color.WHITE,true);tick.setGravity(Gravity.CENTER);tick.setBackground(rounded(accent,Color.TRANSPARENT,30));LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(dp(32),dp(32));tp.rightMargin=dp(12);card.addView(tick,tp);}
+        if(id!=null){card.setOnLongClickListener(v->{toggleSelection(id);return true;});card.setOnClickListener(v->{if(selectionMode)toggleSelection(id);});}
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, dp(78));
         cardParams.bottomMargin = dp(10);
         list.addView(card, cardParams);
@@ -355,6 +408,7 @@ public class VideoLibraryActivity extends Activity {
         nameView.setMaxLines(2);
         nameView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         card.addView(nameView, new LinearLayout.LayoutParams(0, -1, 1));
+        if(id!=null){nameView.setOnLongClickListener(v->{toggleSelection(id);return true;});nameView.setOnClickListener(v->{if(selectionMode)toggleSelection(id);});}
 
         Button play = new Button(this);
         play.setAllCaps(false);
@@ -369,6 +423,7 @@ public class VideoLibraryActivity extends Activity {
         if (id == null) importingAction = play;
         play.setOnClickListener(v -> {
             if (id == null) return;
+            if(selectionMode){toggleSelection(id);return;}
             Intent intent = new Intent(this, VideoPlayerActivity.class);
             intent.putExtra("video_id", id);
             startActivity(intent);
@@ -383,7 +438,9 @@ public class VideoLibraryActivity extends Activity {
             more.setContentDescription("영상 더보기");
             LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(dp(42), dp(48));
             card.addView(more, moreParams);
+            more.setOnLongClickListener(v->{toggleSelection(id);return true;});
             more.setOnClickListener(v -> {
+                if(selectionMode){toggleSelection(id);return;}
                 PopupMenu popup = new PopupMenu(this, more);
                 popup.getMenu().add("이름 수정").setOnMenuItemClickListener(menu -> { rename(id); return true; });
                 popup.getMenu().add("삭제").setOnMenuItemClickListener(menu -> { confirmDelete(id); return true; });
@@ -572,6 +629,7 @@ public class VideoLibraryActivity extends Activity {
                 .setPositiveButton("등록 취소", (d, w) -> cancelled = true).show();
             return;
         }
+        if(selectionMode){exitSelection();return;}
         super.onBackPressed();
     }
 }
