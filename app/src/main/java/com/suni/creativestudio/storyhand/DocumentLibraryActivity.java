@@ -148,8 +148,14 @@ public class DocumentLibraryActivity extends Activity {
         }
       });
     }else{
-      addImage(page);
-      TextView info=text((page-volumeStart+1)+" / "+(volumeEnd-volumeStart),14,false);reader.addView(info);
+      // Keep page mode within the available viewport, including the seek bar.
+      // The image takes only the remaining height instead of expanding the ScrollView.
+      ImageView image=new ImageView(this);
+      image.setAdjustViewBounds(false);
+      image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+      reader.addView(image,new LinearLayout.LayoutParams(-1,0,1));
+      loadImage(page,image);
+      TextView info=text((page-volumeStart+1)+" / "+(volumeEnd-volumeStart),14,false);reader.addView(info,new LinearLayout.LayoutParams(-1,dp(22)));
       LinearLayout bar=new LinearLayout(this);reader.addView(bar);
       Button prev=button("◀ 이전",()->{if(page>volumeStart){page--;remember();renderPages();}else goVolume(-1);});
       Button next=button("다음 ▶",()->{if(page<volumeEnd-1){page++;remember();renderPages();}else goVolume(1);});
