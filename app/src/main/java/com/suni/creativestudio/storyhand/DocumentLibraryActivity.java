@@ -38,6 +38,12 @@ public class DocumentLibraryActivity extends Activity {
   int renderedEnd=0, renderedStart=0;
   boolean shifting=false;
   boolean vertical=false;
+  int viewMode=0, half=0;
+  boolean spread=false, lastHalf=false;
+  Bitmap pageBitmap;
+  int bitmapPage=-1;
+  File bitmapZip;
+  int loadGeneration=0;
   SeekBar pageSeek;
   TextView seekLabel;
   File currentZip;
@@ -90,7 +96,7 @@ public class DocumentLibraryActivity extends Activity {
     LinearLayout label=new LinearLayout(this);label.setOrientation(1);TextView a=text(title,15,true);a.setSingleLine(true);a.setEllipsize(android.text.TextUtils.TruncateAt.END);label.addView(a);TextView s=text(subtitle,12,false);s.setTextColor(muted);label.addView(s);box.addView(label,new LinearLayout.LayoutParams(0,-2,1));label.setOnClickListener(v->{if(selectionMode&&menuId!=null)toggleSelection(menuId);else action.run();});if(menuId!=null)label.setOnLongClickListener(v->{toggleSelection(menuId);return true;});
     if(menuId!=null){Button read=button("읽기",()->{if(selectionMode)toggleSelection(menuId);else action.run();});LinearLayout.LayoutParams readParams=new LinearLayout.LayoutParams(dp(64),dp(48));readParams.rightMargin=dp(6);box.addView(read,readParams);Button more=button("⋮",()->{});more.setOnClickListener(v->{if(selectionMode)toggleSelection(menuId);else bookMenuPopup(more,menuId);});more.setOnLongClickListener(v->{toggleSelection(menuId);return true;});box.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));}
   }
-  void home(){currentBook=null;shell("문서뷰어");LinearLayout bar=new LinearLayout(this);root.addView(bar);Button add=button("＋ ZIP 등록",()->pick());bar.addView(add,new LinearLayout.LayoutParams(0,dp(48),1));Button all=button("전체 다운로드",()->exportAll());LinearLayout.LayoutParams allParams=new LinearLayout.LayoutParams(0,dp(48),1);allParams.leftMargin=dp(8);bar.addView(all,allParams);importStatus=text("",13,false);importStatus.setTextColor(muted);importStatus.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importStatus);importProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);importProgress.setMax(100);importProgress.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importProgress,new LinearLayout.LayoutParams(-1,dp(8)));ScrollView sc=new ScrollView(this);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));list=new LinearLayout(this);list.setPadding(0,dp(12),0,0);list.setOrientation(1);sc.addView(list);if(books.length()==0)list.addView(text("등록된 ZIP이 없습니다.",14,false));LinkedHashMap<String,ArrayList<JSONObject>> grouped=new LinkedHashMap<>();for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b==null)continue;String group=b.optString("group","미분류");if(!grouped.containsKey(group))grouped.put(group,new ArrayList<>());grouped.get(group).add(b);}for(String group:grouped.keySet()){TextView heading=text("📚 "+group,18,true);heading.setPadding(0,dp(14),0,dp(8));list.addView(heading);ArrayList<JSONObject> volumes=grouped.get(group);volumes.sort((a,b)->natural(a.optString("title"),b.optString("title")));for(JSONObject b:volumes){String id=b.optString("id");row(list,b.optString("title"),"ZIP · "+b.optInt("count")+"장",()->openBook(id),id);}}selectionFooter();}
+  void home(){loadGeneration++;pageBitmap=null;bitmapPage=-1;currentBook=null;shell("문서뷰어");LinearLayout bar=new LinearLayout(this);root.addView(bar);Button add=button("＋ ZIP 등록",()->pick());bar.addView(add,new LinearLayout.LayoutParams(0,dp(48),1));Button all=button("전체 다운로드",()->exportAll());LinearLayout.LayoutParams allParams=new LinearLayout.LayoutParams(0,dp(48),1);allParams.leftMargin=dp(8);bar.addView(all,allParams);importStatus=text("",13,false);importStatus.setTextColor(muted);importStatus.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importStatus);importProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);importProgress.setMax(100);importProgress.setVisibility(busy?View.VISIBLE:View.GONE);root.addView(importProgress,new LinearLayout.LayoutParams(-1,dp(8)));ScrollView sc=new ScrollView(this);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));list=new LinearLayout(this);list.setPadding(0,dp(12),0,0);list.setOrientation(1);sc.addView(list);if(books.length()==0)list.addView(text("등록된 ZIP이 없습니다.",14,false));LinkedHashMap<String,ArrayList<JSONObject>> grouped=new LinkedHashMap<>();for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b==null)continue;String group=b.optString("group","미분류");if(!grouped.containsKey(group))grouped.put(group,new ArrayList<>());grouped.get(group).add(b);}for(String group:grouped.keySet()){TextView heading=text("📚 "+group,18,true);heading.setPadding(0,dp(14),0,dp(8));list.addView(heading);ArrayList<JSONObject> volumes=grouped.get(group);volumes.sort((a,b)->natural(a.optString("title"),b.optString("title")));for(JSONObject b:volumes){String id=b.optString("id");row(list,b.optString("title"),"ZIP · "+b.optInt("count")+"장",()->openBook(id),id);}}selectionFooter();}
   static int natural(String a,String b){java.util.regex.Matcher x=java.util.regex.Pattern.compile("\\d+|\\D+").matcher(a.toLowerCase(Locale.ROOT)),y=java.util.regex.Pattern.compile("\\d+|\\D+").matcher(b.toLowerCase(Locale.ROOT));while(x.find()&&y.find()){String p=x.group(),q=y.group();int c;if(p.matches("\\d+")&&q.matches("\\d+")){c=Integer.compare(p.length(),q.length());if(c==0)c=p.compareTo(q);}else c=p.compareTo(q);if(c!=0)return c;}return a.compareToIgnoreCase(b);}
   void pick(){if(busy)return;Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);startActivityForResult(i,PICK);}
   @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result!=RESULT_OK||data==null)return;if(request==PICK){ArrayList<Uri> u=new ArrayList<>();if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)u.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)u.add(data.getData());importQueue(u,0);}else if(request==EXPORT&&exportId!=null&&data.getData()!=null){JSONObject b=book(exportId);exportId=null;if(b!=null)copyOut(b,data.getData());}else if(request==EXPORT_ALL&&data.getData()!=null)allToFolder(data.getData());}
@@ -99,7 +105,7 @@ public class DocumentLibraryActivity extends Activity {
   // ZIP UTF-8 flags still take precedence; MS949 handles older Korean archives.
   ZipFile openZip(File zip)throws IOException{return new ZipFile(zip,Charset.forName("MS949"));}
   ArrayList<String> entries(File zip)throws IOException{ArrayList<String> a=new ArrayList<>();try(ZipFile z=openZip(zip)){Enumeration<? extends ZipEntry> en=z.entries();while(en.hasMoreElements()){ZipEntry e=en.nextElement();String n=e.getName();if(!e.isDirectory()&&n.matches("(?i).*\\.(jpg|jpeg|png)$")&&!n.startsWith("__MACOSX/"))a.add(n);}}a.sort(DocumentLibraryActivity::natural);return a;}
-  void openBook(String id){JSONObject b=book(id);if(b==null)return;File f=file(b);if(f==null||!f.exists()){toast("ZIP 파일이 없습니다.");return;}currentBook=id;currentZip=f;new Thread(()->{try{ArrayList<String> p=entries(f);runOnUiThread(()->{pages=p;detectVolumeRoot();pages.sort((left,right)->natural(relativeVolumePath(left),relativeVolumePath(right)));page=Math.min(Math.max(0,getSharedPreferences(PREF,0).getInt("page_"+id,0)),Math.max(0,pages.size()-1));vertical=false;setVolume(page);volumeScreen(b);});}catch(Exception e){runOnUiThread(()->toast("ZIP을 읽지 못했습니다."));}}).start();}
+  void openBook(String id){JSONObject b=book(id);if(b==null)return;File f=file(b);if(f==null||!f.exists()){toast("ZIP 파일이 없습니다.");return;}currentBook=id;currentZip=f;new Thread(()->{try{ArrayList<String> p=entries(f);runOnUiThread(()->{pages=p;detectVolumeRoot();pages.sort((left,right)->natural(relativeVolumePath(left),relativeVolumePath(right)));page=Math.min(Math.max(0,getSharedPreferences(PREF,0).getInt("page_"+id,0)),Math.max(0,pages.size()-1));vertical=false;viewMode=0;half=0;lastHalf=false;setVolume(page);volumeScreen(b);});}catch(Exception e){runOnUiThread(()->toast("ZIP을 읽지 못했습니다."));}}).start();}
   // A single wrapper directory around several stories is not itself a volume.
   void detectVolumeRoot(){
     sharedVolumeRoot="";
@@ -134,13 +140,14 @@ public class DocumentLibraryActivity extends Activity {
     if(pages.isEmpty())return;
     int target=direction>0?volumeEnd:volumeStart-1;
     if(target<0||target>=pages.size()){toast("더 이상 권이 없습니다.");return;}
-    page=target;setVolume(page);remember();volumeScreen(book(currentBook));
+    page=target;half=0;lastHalf=false;setVolume(page);remember();volumeScreen(book(currentBook));
   }
   void volumeScreen(JSONObject b){
     if(b==null)return;
     shell(b.optString("title")+(volumeName.isEmpty()?"":" · "+volumeName));
     LinearLayout controls=new LinearLayout(this);controls.setGravity(Gravity.CENTER_VERTICAL);root.addView(controls);
-    Button back=button("← 서재",()->home()),mode=button(vertical?"세로 스크롤":"페이지 넘기기",()->{vertical=!vertical;getSharedPreferences(PREF,0).edit().putBoolean("vertical",vertical).apply();volumeScreen(b);}),folders=button("권 목록",()->chooseFolder(b,folderButton));folderButton=folders;
+    Button back=button("← 서재",()->home()),mode=button(viewMode==0?"일반 보기":viewMode==1?"분할 보기 (좌→우)":"분할 보기 (우→좌)",()->{}),folders=button("권 목록",()->chooseFolder(b,folderButton));folderButton=folders;
+    mode.setOnClickListener(v->{PopupMenu menu=new PopupMenu(this,mode);String[] labels={"일반 보기","분할 보기 (좌→우)","분할 보기 (우→좌)"};for(int i=0;i<labels.length;i++){final int choice=i;menu.getMenu().add(0,i,i,labels[i]).setCheckable(true).setChecked(viewMode==i).setOnMenuItemClickListener(item->{viewMode=choice;half=0;lastHalf=false;volumeScreen(b);return true;});}menu.show();});
     LinearLayout.LayoutParams first=new LinearLayout.LayoutParams(0,dp(48),1);first.rightMargin=dp(8);controls.addView(back,first);
     LinearLayout.LayoutParams middle=new LinearLayout.LayoutParams(0,dp(48),1);middle.rightMargin=dp(8);controls.addView(mode,middle);
     controls.addView(folders,new LinearLayout.LayoutParams(0,dp(48),1));
@@ -172,7 +179,7 @@ public class DocumentLibraryActivity extends Activity {
         }
         public void onStopTrackingTouch(SeekBar bar){
           int target=volumeStart+bar.getProgress();
-          if(target!=page){page=target;remember();renderPages();}
+          if(target!=page||half!=0){page=target;half=0;lastHalf=false;remember();renderPages();}
         }
       });
     }
@@ -184,7 +191,7 @@ public class DocumentLibraryActivity extends Activity {
     folders.sort(DocumentLibraryActivity::natural);
     if(folders.isEmpty()){toast("폴더로 나뉜 권이 없습니다.");return;}
     PopupMenu popup=new PopupMenu(this,anchor);
-    for(int i=0;i<folders.size();i++){final String folder=folders.get(i);popup.getMenu().add(folder).setOnMenuItemClickListener(item->{for(int j=0;j<pages.size();j++)if(folder.equals(folderName(j))){page=j;setVolume(page);remember();volumeScreen(b);break;}return true;});}
+    for(int i=0;i<folders.size();i++){final String folder=folders.get(i);popup.getMenu().add(folder).setOnMenuItemClickListener(item->{for(int j=0;j<pages.size();j++)if(folder.equals(folderName(j))){page=j;half=0;lastHalf=false;setVolume(page);remember();volumeScreen(b);break;}return true;});}
     popup.show();
   }
   void remember(){if(currentBook!=null)getSharedPreferences(PREF,0).edit().putInt("page_"+currentBook,page).apply();}
@@ -220,13 +227,67 @@ public class DocumentLibraryActivity extends Activity {
       image.setAdjustViewBounds(false);
       image.setScaleType(ImageView.ScaleType.FIT_CENTER);
       reader.addView(image,new LinearLayout.LayoutParams(-1,0,1));
-      loadImage(page,image);
-      TextView info=text((page-volumeStart+1)+" / "+(volumeEnd-volumeStart),14,false);reader.addView(info,new LinearLayout.LayoutParams(-1,dp(22)));
+      TextView info=text("",14,false);reader.addView(info,new LinearLayout.LayoutParams(-1,dp(22)));
       LinearLayout bar=new LinearLayout(this);reader.addView(bar);
-      Button prev=button("◀ 이전",()->{if(page>volumeStart){page--;remember();renderPages();}else goVolume(-1);});
-      Button next=button("다음 ▶",()->{if(page<volumeEnd-1){page++;remember();renderPages();}else goVolume(1);});
+      Button prev=button("◀ 이전",()->movePage(-1)),next=button("다음 ▶",()->movePage(1));
+      showPage(image,info,prev,next);
       LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(48),1);p.rightMargin=dp(8);bar.addView(prev,p);bar.addView(next,new LinearLayout.LayoutParams(0,dp(48),1));
     }
+  }
+  void movePage(int direction){
+    if(spread&&viewMode!=0&&((direction>0&&half==0)||(direction<0&&half==1))){
+      half=direction>0?1:0;renderPages();return;
+    }
+    int target=page+direction;
+    if(target<volumeStart||target>=volumeEnd){
+      int adjacent=direction>0?volumeEnd:volumeStart-1;
+      if(adjacent<0||adjacent>=pages.size()){toast("더 이상 권이 없습니다.");return;}
+      page=adjacent;setVolume(page);half=0;lastHalf=direction<0;remember();volumeScreen(book(currentBook));return;
+    }
+    page=target;half=0;lastHalf=direction<0;remember();renderPages();
+  }
+  void showPage(ImageView image,TextView info,Button prev,Button next){
+    final int generation=++loadGeneration,index=page;
+    final File zip=currentZip;
+    final String name=pages.get(index);
+    spread=false;prev.setEnabled(false);next.setEnabled(false);
+    info.setText((page-volumeStart+1)+" / "+(volumeEnd-volumeStart));
+    if(pageBitmap!=null&&bitmapPage==index&&zip.equals(bitmapZip)){
+      displayPage(pageBitmap,image,info,prev,next);return;
+    }
+    pageBitmap=null;bitmapPage=-1;
+    new Thread(()->{
+      Bitmap bmp=null;
+      try(ZipFile z=openZip(zip)){
+        ZipEntry entry=z.getEntry(name);
+        if(entry!=null){
+          BitmapFactory.Options o=new BitmapFactory.Options();o.inJustDecodeBounds=true;
+          try(InputStream in=z.getInputStream(entry)){BitmapFactory.decodeStream(in,null,o);}
+          o.inSampleSize=1;int maxWidth=3200;
+          while(o.outWidth/o.inSampleSize>maxWidth||o.outHeight/o.inSampleSize>3000)o.inSampleSize*=2;
+          o.inJustDecodeBounds=false;
+          try(InputStream in=z.getInputStream(entry)){bmp=BitmapFactory.decodeStream(in,null,o);}
+        }
+      }catch(Exception ignored){}
+      final Bitmap result=bmp;
+      runOnUiThread(()->{
+        if(generation!=loadGeneration||currentBook==null){if(result!=null)result.recycle();return;}
+        if(result==null){info.setText("이미지를 읽지 못했습니다.");prev.setEnabled(true);next.setEnabled(true);return;}
+        pageBitmap=result;bitmapPage=index;bitmapZip=zip;displayPage(result,image,info,prev,next);
+      });
+    }).start();
+  }
+  void displayPage(Bitmap bmp,ImageView image,TextView info,Button prev,Button next){
+    spread=viewMode!=0&&bmp.getWidth()>bmp.getHeight();
+    if(lastHalf){half=spread?1:0;lastHalf=false;}
+    if(!spread)half=0;
+    if(spread){
+      boolean right=viewMode==1?half==1:half==0;
+      int mid=bmp.getWidth()/2;
+      image.setImageBitmap(Bitmap.createBitmap(bmp,right?mid:0,0,right?bmp.getWidth()-mid:mid,bmp.getHeight()));
+      info.setText((page-volumeStart+1)+" / "+(volumeEnd-volumeStart)+" · "+(right?"오른쪽":"왼쪽"));
+    }else image.setImageBitmap(bmp);
+    prev.setEnabled(true);next.setEnabled(true);
   }
   void appendWindow(){
     int end=Math.min(renderedEnd+2,volumeEnd);
