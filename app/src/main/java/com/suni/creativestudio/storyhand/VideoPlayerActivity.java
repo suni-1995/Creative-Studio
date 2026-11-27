@@ -81,6 +81,13 @@ public class VideoPlayerActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         try { entries = new JSONArray(prefs().getString("videos","[]")); } catch (Exception ignored) { }
         String selected = getIntent().getStringExtra("video_id");
+        String folder="";
+        for(int i=0;i<entries.length();i++){JSONObject o=entries.optJSONObject(i);if(o!=null&&o.optString("id").equals(selected)){folder=o.optString("folder");break;}}
+        JSONArray scoped=new JSONArray();
+        java.util.ArrayList<String> playlist=getIntent().getStringArrayListExtra("playlist");
+        if(playlist!=null){for(String wanted:playlist)for(int i=0;i<entries.length();i++){JSONObject o=entries.optJSONObject(i);if(o!=null&&wanted.equals(o.optString("id"))&&folder.equals(o.optString("folder"))){scoped.put(o);break;}}}
+        else for(int i=0;i<entries.length();i++){JSONObject o=entries.optJSONObject(i);if(o!=null&&folder.equals(o.optString("folder")))scoped.put(o);}
+        entries=scoped;
         for (int i=0;i<entries.length();i++) {
             JSONObject e=entries.optJSONObject(i);
             if (e!=null && e.optString("id").equals(selected)) { index=i; break; }
