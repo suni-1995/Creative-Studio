@@ -136,7 +136,7 @@ public class VideoLibraryActivity extends Activity {
         LinearLayout.LayoutParams topParams = new LinearLayout.LayoutParams(-1, dp(52));
         topParams.bottomMargin = dp(10);
         root.addView(topActions, topParams);
-        folderButton=new Button(this);folderButton.setAllCaps(false);folderButton.setTextColor(foreground);folderButton.setBackground(rounded(surface,stroke,12));folderButton.setText("＋ 폴더 생성");folderButton.setOnClickListener(v->editFolder(null));root.addView(folderButton,new LinearLayout.LayoutParams(-1,dp(44)));
+        folderButton=new Button(this);folderButton.setAllCaps(false);folderButton.setTextColor(foreground);folderButton.setBackground(rounded(surface,stroke,12));folderButton.setText("＋ 폴더 생성");folderButton.setOnClickListener(v->editFolder(null));LinearLayout.LayoutParams folderParams=new LinearLayout.LayoutParams(-1,dp(44));folderParams.bottomMargin=dp(8);root.addView(folderButton,folderParams);
         sortSpinner = new Spinner(this);
         String[] sortOptions = {"최신 등록순", "오래된 등록순", "이름 오름차순", "이름 내림차순"};
         ArrayAdapter<String> sortAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, sortOptions) {
@@ -495,8 +495,9 @@ public class VideoLibraryActivity extends Activity {
         String key="folder:"+id;LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(14),dp(8),dp(10),dp(8));row.setBackground(rounded(surface,selected.contains(key)?accent:stroke,16));
         LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-1,dp(78));rp.bottomMargin=dp(10);list.addView(row,rp);
         if(selected.contains(key)){TextView tick=text("✓",19,Color.WHITE,true);tick.setGravity(Gravity.CENTER);tick.setBackground(rounded(accent,Color.TRANSPARENT,30));row.addView(tick,new LinearLayout.LayoutParams(dp(32),dp(32)));}
-        TextView label=text("📁  "+folders.optString(id)+"\n동영상 "+folderCount(id)+"개",15,foreground,true);label.setPadding(dp(8),0,0,0);row.addView(label,new LinearLayout.LayoutParams(0,-1,1));
-        View.OnClickListener open=v->{if(copying||exporting)return;if(selectionMode)toggleSelection(key);else{activeFolder=id;render();}};row.setOnClickListener(open);label.setOnClickListener(open);row.setOnLongClickListener(v->{toggleSelection(key);return true;});label.setOnLongClickListener(v->{toggleSelection(key);return true;});
+        TextView label=text(folders.optString(id),17,foreground,true);label.setPadding(dp(8),0,dp(8),0);label.setMaxLines(2);label.setEllipsize(android.text.TextUtils.TruncateAt.END);row.addView(label,new LinearLayout.LayoutParams(0,-1,1));
+        TextView count=text("영상 "+folderCount(id)+"개",12,secondary,false);count.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);count.setSingleLine(true);row.addView(count,new LinearLayout.LayoutParams(-2,-1));
+        View.OnClickListener open=v->{if(copying||exporting)return;if(selectionMode)toggleSelection(key);else{activeFolder=id;render();}};row.setOnClickListener(open);label.setOnClickListener(open);count.setOnClickListener(open);count.setOnLongClickListener(v->{toggleSelection(key);return true;});row.setOnLongClickListener(v->{toggleSelection(key);return true;});label.setOnLongClickListener(v->{toggleSelection(key);return true;});
         TextView more=text("⋮",27,foreground,true);more.setGravity(Gravity.CENTER);row.addView(more,new LinearLayout.LayoutParams(dp(42),dp(48)));more.setOnClickListener(v->{if(copying||exporting)return;if(selectionMode){toggleSelection(key);return;}PopupMenu menu=new PopupMenu(this,more);menu.getMenu().add("이름 수정").setOnMenuItemClickListener(m->{editFolder(id);return true;});menu.getMenu().add("다운로드").setOnMenuItemClickListener(m->{if(folderCount(id)==0)toast("다운로드할 영상이 없습니다.");else chooseExportFolder(id);return true;});menu.getMenu().add("삭제").setOnMenuItemClickListener(m->{selected.clear();selected.add(key);selectionMode=true;render();confirmSelectedDelete();return true;});menu.show();});
     }
     private void chooseExportFolder() { chooseExportFolder(activeFolder.isEmpty()?null:activeFolder); }
