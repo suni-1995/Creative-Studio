@@ -34,7 +34,11 @@ public class VideoLibraryActivity extends Activity {
     private final ArrayList<Uri> importQueue = new ArrayList<>();
     private boolean batchImport = false;
     private String sortMode = "newest";
-    private Button exportAllButton;
+    private Button exportAllButton, folderButton;
+    private TextView screenTitle;
+    private JSONObject folders = new JSONObject();
+    private String activeFolder = "", exportScope = null;
+    private boolean exporting;
     private Spinner sortSpinner;
     private String pendingExportId;
     private static final String PREFS = "video_library_only";
@@ -96,12 +100,15 @@ public class VideoLibraryActivity extends Activity {
         colors();
         try { videos = new JSONArray(getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY, "[]")); }
         catch (Exception ignored) { videos = new JSONArray(); }
+        try { folders = new JSONObject(getSharedPreferences(PREFS, MODE_PRIVATE).getString("folders","{}")); } catch(Exception ignored) {}
+        if(state!=null){activeFolder=state.getString("folder","");exportScope=state.getString("exportScope");pendingExportId=state.getString("pendingExportId");}
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(background);
         root.setPadding(dp(18), dp(18), dp(18), dp(12));
 
-        TextView title = text("동영상 플레이어", 23, foreground, true);
+        TextView title = text("동영상 플레이어", 23, foreground, true); screenTitle=title;
+        title.setOnClickListener(v->{if(!copying&&!activeFolder.isEmpty()){activeFolder="";exitSelection();}});
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, dp(52));
         titleParams.bottomMargin = dp(12);
         root.addView(title, titleParams);
@@ -129,6 +136,7 @@ public class VideoLibraryActivity extends Activity {
         LinearLayout.LayoutParams topParams = new LinearLayout.LayoutParams(-1, dp(52));
         topParams.bottomMargin = dp(10);
         root.addView(topActions, topParams);
+        folderButton=new Button(this);folderButton.setAllCaps(false);folderButton.setTextColor(foreground);folderButton.setBackground(rounded(surface,stroke,12));folderButton.setText("＋ 폴더 생성");folderButton.setOnClickListener(v->editFolder(null));root.addView(folderButton,new LinearLayout.LayoutParams(-1,dp(44)));
         sortSpinner = new Spinner(this);
         String[] sortOptions = {"최신 등록순", "오래된 등록순", "이름 오름차순", "이름 내림차순"};
         ArrayAdapter<String> sortAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, sortOptions) {
@@ -212,7 +220,7 @@ public class VideoLibraryActivity extends Activity {
     }
 
     private void chooseVideo() {
-        if (copying) return;
+        if (copying || exporting || selectionMode) return;
         Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         pick.addCategory(Intent.CATEGORY_OPENABLE);
         pick.setType("video/*");
@@ -317,6 +325,7 @@ public class VideoLibraryActivity extends Activity {
                 record.put("id", id);
                 record.put("title", name);
                 record.put("file", completed.getName());
+                record.put("folder", activeFolder);
                 synchronized (lock) {
                     JSONArray updated = new JSONArray(videos.toString());
                     updated.put(record);
@@ -344,21 +353,27 @@ public class VideoLibraryActivity extends Activity {
     private void toast(String text) { Toast.makeText(this, text, Toast.LENGTH_SHORT).show(); }
 
     private void toggleSelection(String id) {
+        if(copying || exporting)return;
         if (!selectionMode) selectionMode=true;
         if (!selected.add(id)) selected.remove(id);
         render();
     }
     private void exitSelection() { selectionMode=false;selected.clear();render(); }
     private void selectAll() {
-        for(int i=0;i<videos.length();i++){JSONObject o=videos.optJSONObject(i);if(o!=null)selected.add(o.optString("id"));}
+        selected.clear();
+        if(activeFolder.isEmpty()) for(String id:folderIds())selected.add("folder:"+id);
+        for(JSONObject o:orderedVideos())selected.add(o.optString("id"));
         render();
     }
     private void confirmSelectedDelete() {
+        if(copying||exporting)return;
         if(selected.isEmpty()){toast("선택한 영상이 없습니다.");return;}
-        new AlertDialog.Builder(this).setTitle("선택 영상 삭제").setMessage(selected.size()+"개 영상을 앱에서 삭제할까요? 원본은 삭제되지 않습니다.")
+        new AlertDialog.Builder(this).setTitle("선택 영상 삭제").setMessage(selected.size()+"개 선택 항목을 삭제할까요? 폴더 안의 영상도 모두 삭제됩니다. 원본은 삭제되지 않습니다.")
             .setNegativeButton("취소",null).setPositiveButton("삭제",(d,w)->{
                 int failures=0;
-                for(String id:new ArrayList<>(selected)){
+                java.util.LinkedHashSet<String> targets=new java.util.LinkedHashSet<>();
+                for(String key:selected){if(key.startsWith("folder:")){String folder=key.substring(7);for(int j=0;j<videos.length();j++){JSONObject o=videos.optJSONObject(j);if(o!=null&&folder.equals(o.optString("folder")))targets.add(o.optString("id"));}}else targets.add(key);}
+                for(String id:targets){
                     int i=indexOf(id);if(i<0)continue;
                     JSONObject o=videos.optJSONObject(i);
                     File file=o==null?null:safeVideoFile(id,o.optString("file"));
@@ -366,29 +381,36 @@ public class VideoLibraryActivity extends Activity {
                     videos.remove(i);
                     getSharedPreferences(PREFS,MODE_PRIVATE).edit().remove("position_"+id).commit();
                 }
-                if(!save())toast("목록 저장에 실패했습니다.");
+                for(String key:selected)if(key.startsWith("folder:")&&folderCount(key.substring(7))==0)folders.remove(key.substring(7));
+                if(!save() || !saveFolders())toast("목록 저장에 실패했습니다.");
                 if(failures>0)toast(failures+"개 영상을 삭제하지 못했습니다.");
                 exitSelection();
             }).show();
     }
     private void render() {
         list.removeAllViews();
+        screenTitle.setText(activeFolder.isEmpty()?"동영상 플레이어":"‹  "+folders.optString(activeFolder));
+        folderButton.setVisibility(activeFolder.isEmpty()?View.VISIBLE:View.GONE);folderButton.setEnabled(!copying&&!exporting);
+        if(activeFolder.isEmpty())for(String folder:folderIds())addFolderRow(folder);
         if(selectionBar!=null){selectionBar.setVisibility(selectionMode?View.VISIBLE:View.GONE);selectionCount.setText(selected.size()+"개 선택");}
         importingAction = null;
         if (copying && !importingName.isEmpty()) addVideoRow(importingName, null, importingPercent);
-        if (videos.length() == 0 && !copying) {
+        if (orderedVideos().isEmpty() && (!activeFolder.isEmpty()||folders.length()==0) && !copying) {
             TextView empty = text("등록된 영상이 없습니다.", 14, secondary, false);
             empty.setPadding(dp(14), dp(22), dp(14), dp(22));
             list.addView(empty);
         }
+        for (JSONObject item : orderedVideos()) addVideoRow(item.optString("title", "동영상"), item.optString("id"), -1);
+    }
+    private ArrayList<JSONObject> orderedVideos(){
         ArrayList<JSONObject> ordered = new ArrayList<>();
-        for (int i = 0; i < videos.length(); i++) if (videos.optJSONObject(i) != null) ordered.add(videos.optJSONObject(i));
-        if ("oldest".equals(sortMode)) Collections.reverse(ordered);
+        for (int i = 0; i < videos.length(); i++) {JSONObject o=videos.optJSONObject(i);if(o!=null&&activeFolder.equals(o.optString("folder")))ordered.add(o); }
+        if ("oldest".equals(sortMode)) { /* stored in registration order */ }
         else if ("nameAsc".equals(sortMode) || "nameDesc".equals(sortMode)) {
             Collections.sort(ordered, (a, b) -> a.optString("title").compareToIgnoreCase(b.optString("title")));
             if ("nameDesc".equals(sortMode)) Collections.reverse(ordered);
         } else Collections.reverse(ordered);
-        for (JSONObject item : ordered) addVideoRow(item.optString("title", "동영상"), item.optString("id"), -1);
+        return ordered;
     }
 
     private void addVideoRow(String name, String id, int percent) {
@@ -422,10 +444,11 @@ public class VideoLibraryActivity extends Activity {
         play.setEnabled(percent < 0);
         if (id == null) importingAction = play;
         play.setOnClickListener(v -> {
-            if (id == null) return;
+            if (id == null || copying || exporting) return;
             if(selectionMode){toggleSelection(id);return;}
             Intent intent = new Intent(this, VideoPlayerActivity.class);
             intent.putExtra("video_id", id);
+            ArrayList<String> playlist=new ArrayList<>();for(JSONObject o:orderedVideos())playlist.add(o.optString("id"));intent.putStringArrayListExtra("playlist",playlist);
             startActivity(intent);
         });
         LinearLayout.LayoutParams playParams = new LinearLayout.LayoutParams(dp(65), dp(42));
@@ -440,8 +463,10 @@ public class VideoLibraryActivity extends Activity {
             card.addView(more, moreParams);
             more.setOnLongClickListener(v->{toggleSelection(id);return true;});
             more.setOnClickListener(v -> {
+                if(copying||exporting)return;
                 if(selectionMode){toggleSelection(id);return;}
                 PopupMenu popup = new PopupMenu(this, more);
+                popup.getMenu().add("폴더 이동").setOnMenuItemClickListener(menu->{moveVideo(id);return true;});
                 popup.getMenu().add("이름 수정").setOnMenuItemClickListener(menu -> { rename(id); return true; });
                 popup.getMenu().add("삭제").setOnMenuItemClickListener(menu -> { confirmDelete(id); return true; });
                 popup.getMenu().add("다운로드").setOnMenuItemClickListener(menu -> { chooseExportDestination(id); return true; });
@@ -451,8 +476,33 @@ public class VideoLibraryActivity extends Activity {
     }
 
 
-    private void chooseExportFolder() {
-        if (copying) return;
+    private boolean saveFolders(){return getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("folders",folders.toString()).commit();}
+    private ArrayList<String> folderIds(){ArrayList<String> ids=new ArrayList<>();java.util.Iterator<String> it=folders.keys();while(it.hasNext())ids.add(it.next());Collections.sort(ids,(a,b)->folders.optString(a).compareToIgnoreCase(folders.optString(b)));return ids;}
+    private int folderCount(String id){int n=0;for(int i=0;i<videos.length();i++){JSONObject o=videos.optJSONObject(i);if(o!=null&&id.equals(o.optString("folder")))n++;}return n;}
+    private void editFolder(String id){
+        if(copying||exporting)return;
+        EditText input=new EditText(this);input.setSingleLine(true);if(id!=null)input.setText(folders.optString(id));
+        new AlertDialog.Builder(this).setTitle(id==null?"폴더 생성":"폴더 이름 수정").setView(input).setNegativeButton("취소",null).setPositiveButton("저장",(d,w)->{
+            String name=input.getText().toString().trim();if(name.isEmpty()||name.contains("/")||name.contains("\\")||name.equals(".")||name.equals("..")){toast("올바른 폴더 이름을 입력해 주세요.");return;}
+            try{folders.put(id==null?UUID.randomUUID().toString():id,name);if(!saveFolders())toast("폴더 저장 실패");render();}catch(Exception e){toast("폴더 저장 실패");}
+        }).show();
+    }
+    private void moveVideo(String id){
+        ArrayList<String> ids=folderIds();ids.add(0,"");ArrayList<String> names=new ArrayList<>();for(String f:ids)names.add(f.isEmpty()?"폴더 없음":folders.optString(f));
+        new AlertDialog.Builder(this).setTitle("폴더 이동").setItems(names.toArray(new String[0]),(d,w)->{int i=indexOf(id);if(i<0)return;try{videos.optJSONObject(i).put("folder",ids.get(w));if(!save())toast("이동 저장 실패");render();}catch(Exception e){toast("이동 실패");}}).show();
+    }
+    private void addFolderRow(String id){
+        String key="folder:"+id;LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(14),dp(8),dp(10),dp(8));row.setBackground(rounded(surface,selected.contains(key)?accent:stroke,16));
+        LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-1,dp(78));rp.bottomMargin=dp(10);list.addView(row,rp);
+        if(selected.contains(key)){TextView tick=text("✓",19,Color.WHITE,true);tick.setGravity(Gravity.CENTER);tick.setBackground(rounded(accent,Color.TRANSPARENT,30));row.addView(tick,new LinearLayout.LayoutParams(dp(32),dp(32)));}
+        TextView label=text("📁  "+folders.optString(id)+"\n동영상 "+folderCount(id)+"개",15,foreground,true);label.setPadding(dp(8),0,0,0);row.addView(label,new LinearLayout.LayoutParams(0,-1,1));
+        View.OnClickListener open=v->{if(copying||exporting)return;if(selectionMode)toggleSelection(key);else{activeFolder=id;render();}};row.setOnClickListener(open);label.setOnClickListener(open);row.setOnLongClickListener(v->{toggleSelection(key);return true;});label.setOnLongClickListener(v->{toggleSelection(key);return true;});
+        TextView more=text("⋮",27,foreground,true);more.setGravity(Gravity.CENTER);row.addView(more,new LinearLayout.LayoutParams(dp(42),dp(48)));more.setOnClickListener(v->{if(copying||exporting)return;if(selectionMode){toggleSelection(key);return;}PopupMenu menu=new PopupMenu(this,more);menu.getMenu().add("이름 수정").setOnMenuItemClickListener(m->{editFolder(id);return true;});menu.getMenu().add("다운로드").setOnMenuItemClickListener(m->{if(folderCount(id)==0)toast("다운로드할 영상이 없습니다.");else chooseExportFolder(id);return true;});menu.getMenu().add("삭제").setOnMenuItemClickListener(m->{selected.clear();selected.add(key);selectionMode=true;render();confirmSelectedDelete();return true;});menu.show();});
+    }
+    private void chooseExportFolder() { chooseExportFolder(activeFolder.isEmpty()?null:activeFolder); }
+    private void chooseExportFolder(String scope) {
+        if (copying || exporting) return;
+        exportScope=scope;
         if (videos.length() == 0) { toast("다운로드할 영상이 없습니다."); return; }
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -466,8 +516,10 @@ public class VideoLibraryActivity extends Activity {
         addButton.setEnabled(false);
         exportAllButton.setEnabled(false);
         final JSONArray snapshot;
-        try { snapshot = new JSONArray(videos.toString()); }
+        try { snapshot = new JSONArray();for(int i=0;i<videos.length();i++){JSONObject o=videos.optJSONObject(i);if(o!=null&&(exportScope==null||exportScope.equals(o.optString("folder"))))snapshot.put(new JSONObject(o.toString()));} }
         catch (Exception e) { copying = false; addButton.setEnabled(true); exportAllButton.setEnabled(true); toast("영상 목록을 읽을 수 없습니다."); return; }
+        exporting=true;
+        final JSONObject folderSnapshot;try{folderSnapshot=new JSONObject(folders.toString());}catch(Exception e){copying=false;exporting=false;addButton.setEnabled(true);exportAllButton.setEnabled(true);return;}
         progressLabel.setVisibility(View.VISIBLE);
         progressBar.setVisibility(View.VISIBLE);
         progressBar.setProgress(0);
@@ -476,6 +528,7 @@ public class VideoLibraryActivity extends Activity {
             java.util.HashSet<String> names = new java.util.HashSet<>();
             try {
                 Uri parent = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri));
+                java.util.HashMap<String,Uri> destinations=new java.util.HashMap<>();
                 for (int i = 0; i < snapshot.length(); i++) {
                     JSONObject item = snapshot.optJSONObject(i);
                     if (item == null) { failed++; continue; }
@@ -494,7 +547,9 @@ public class VideoLibraryActivity extends Activity {
                     while (!names.add(unique.toLowerCase(Locale.ROOT))) unique = base + " (" + number++ + ")" + extension;
                     Uri output = null;
                     try {
-                        output = DocumentsContract.createDocument(getContentResolver(), parent, "video/*", unique);
+                        String group=item.optString("folder");Uri target=parent;
+                        if(!group.isEmpty()){target=destinations.get(group);if(target==null){target=DocumentsContract.createDocument(getContentResolver(),parent,DocumentsContract.Document.MIME_TYPE_DIR,folderSnapshot.optString(group,"동영상"));if(target==null)throw new IOException("폴더 생성 실패");destinations.put(group,target);}}
+                        output = DocumentsContract.createDocument(getContentResolver(), target, "video/*", unique);
                         if (output == null) throw new IOException("파일 생성 실패");
                         try (InputStream in = new FileInputStream(source);
                              OutputStream out = getContentResolver().openOutputStream(output, "w")) {
@@ -518,7 +573,7 @@ public class VideoLibraryActivity extends Activity {
             } catch (Exception e) { failed += snapshot.length() - succeeded - failed; }
             final int ok = succeeded, errors = failed;
             runOnUiThread(() -> {
-                copying = false;
+                copying = false; exporting=false;
                 addButton.setEnabled(true);
                 exportAllButton.setEnabled(true);
                 progressLabel.setVisibility(View.GONE);
@@ -622,7 +677,9 @@ public class VideoLibraryActivity extends Activity {
         render();
     }
 
+    @Override protected void onSaveInstanceState(Bundle out){super.onSaveInstanceState(out);out.putString("folder",activeFolder);out.putString("exportScope",exportScope);out.putString("pendingExportId",pendingExportId);}
     @Override public void onBackPressed() {
+        if(exporting){toast("다운로드가 완료될 때까지 기다려 주세요.");return;}
         if (copying) {
             new AlertDialog.Builder(this).setMessage("영상 등록을 취소하시겠습니까?")
                 .setNegativeButton("계속 등록", null)
@@ -630,6 +687,7 @@ public class VideoLibraryActivity extends Activity {
             return;
         }
         if(selectionMode){exitSelection();return;}
+        if(!activeFolder.isEmpty()){activeFolder="";render();return;}
         super.onBackPressed();
     }
 }
