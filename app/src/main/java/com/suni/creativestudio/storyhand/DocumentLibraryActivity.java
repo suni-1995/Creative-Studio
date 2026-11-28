@@ -15,7 +15,7 @@ import java.util.*;
 import java.util.zip.*;
 import java.nio.charset.Charset;
 
-public class DocumentLibraryActivity extends Activity {
+public class DocumentLibraryActivity extends ViewerFontActivity {
   static final int PICK=101, EXPORT=102, EXPORT_ALL=103;
   final String PREF="document_library_v1";
   JSONArray books=new JSONArray();
@@ -67,7 +67,7 @@ public class DocumentLibraryActivity extends Activity {
   void selectAll(){for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b!=null)selected.add(b.optString("id"));}home();}
   void confirmSelectedDelete(){
     if(selected.isEmpty()){toast("선택한 문서가 없습니다.");return;}
-    new AlertDialog.Builder(this).setTitle("선택 문서 삭제").setMessage(selected.size()+"개 ZIP 문서를 앱에서 삭제할까요? 원본은 삭제되지 않습니다.")
+    fontDialog().setTitle("선택 문서 삭제").setMessage(selected.size()+"개 ZIP 문서를 앱에서 삭제할까요? 원본은 삭제되지 않습니다.")
       .setNegativeButton("취소",null).setPositiveButton("삭제",(d,w)->{
         JSONArray kept=new JSONArray();int failed=0;
         for(int i=0;i<books.length();i++){
@@ -147,7 +147,7 @@ public class DocumentLibraryActivity extends Activity {
     shell(b.optString("title")+(volumeName.isEmpty()?"":" · "+volumeName));
     LinearLayout controls=new LinearLayout(this);controls.setGravity(Gravity.CENTER_VERTICAL);root.addView(controls);
     Button back=button("← 서재",()->home()),mode=button(viewMode==0?"일반 보기":viewMode==1?"분할 보기 (좌→우)":"분할 보기 (우→좌)",()->{}),folders=button("권 목록",()->chooseFolder(b,folderButton));folderButton=folders;
-    mode.setOnClickListener(v->{PopupMenu menu=new PopupMenu(this,mode);String[] labels={"일반 보기","분할 보기 (좌→우)","분할 보기 (우→좌)"};for(int i=0;i<labels.length;i++){final int choice=i;menu.getMenu().add(0,i,i,labels[i]).setCheckable(true).setChecked(viewMode==i).setOnMenuItemClickListener(item->{viewMode=choice;half=0;lastHalf=false;volumeScreen(b);return true;});}menu.show();});
+    mode.setOnClickListener(v->{PopupMenu menu=new PopupMenu(this,mode);String[] labels={"일반 보기","분할 보기 (좌→우)","분할 보기 (우→좌)"};for(int i=0;i<labels.length;i++){final int choice=i;menu.getMenu().add(0,i,i,labels[i]).setCheckable(true).setChecked(viewMode==i).setOnMenuItemClickListener(item->{viewMode=choice;half=0;lastHalf=false;volumeScreen(b);return true;});}showFontMenu(menu);});
     LinearLayout.LayoutParams first=new LinearLayout.LayoutParams(0,dp(48),1);first.rightMargin=dp(8);controls.addView(back,first);
     LinearLayout.LayoutParams middle=new LinearLayout.LayoutParams(0,dp(48),1);middle.rightMargin=dp(8);controls.addView(mode,middle);
     controls.addView(folders,new LinearLayout.LayoutParams(0,dp(48),1));
@@ -192,7 +192,7 @@ public class DocumentLibraryActivity extends Activity {
     if(folders.isEmpty()){toast("폴더로 나뉜 권이 없습니다.");return;}
     PopupMenu popup=new PopupMenu(this,anchor);
     for(int i=0;i<folders.size();i++){final String folder=folders.get(i);popup.getMenu().add(folder).setOnMenuItemClickListener(item->{for(int j=0;j<pages.size();j++)if(folder.equals(folderName(j))){page=j;half=0;lastHalf=false;setVolume(page);remember();volumeScreen(b);break;}return true;});}
-    popup.show();
+    showFontMenu(popup);
   }
   void remember(){if(currentBook!=null)getSharedPreferences(PREF,0).edit().putInt("page_"+currentBook,page).apply();}
   void renderPages(){
@@ -327,10 +327,10 @@ public class DocumentLibraryActivity extends Activity {
     PopupMenu menu=new PopupMenu(this,anchor);
     menu.getMenu().add("작품 묶기 / 이름 변경").setOnMenuItemClickListener(item->{edit(b);return true;});
     menu.getMenu().add("ZIP 다운로드").setOnMenuItemClickListener(item->{exportOne(id);return true;});
-    menu.getMenu().add("삭제").setOnMenuItemClickListener(item->{new AlertDialog.Builder(this).setMessage("이 ZIP을 앱에서 삭제할까요?").setNegativeButton("취소",null).setPositiveButton("삭제",(x,y)->{File f=file(b);if(f!=null)f.delete();JSONArray next=new JSONArray();for(int j=0;j<books.length();j++)if(!id.equals(books.optJSONObject(j).optString("id")))next.put(books.optJSONObject(j));books=next;save();home();}).show();return true;});
-    menu.show();
+    menu.getMenu().add("삭제").setOnMenuItemClickListener(item->{fontDialog().setMessage("이 ZIP을 앱에서 삭제할까요?").setNegativeButton("취소",null).setPositiveButton("삭제",(x,y)->{File f=file(b);if(f!=null)f.delete();JSONArray next=new JSONArray();for(int j=0;j<books.length();j++)if(!id.equals(books.optJSONObject(j).optString("id")))next.put(books.optJSONObject(j));books=next;save();home();}).show();return true;});
+    showFontMenu(menu);
   }
-  void edit(JSONObject b){LinearLayout form=new LinearLayout(this);form.setPadding(dp(18),0,dp(18),0);form.setOrientation(1);EditText title=new EditText(this),group=new EditText(this);title.setSingleLine(true);group.setSingleLine(true);title.setText(b.optString("title"));group.setText(b.optString("group"));title.setHint("권 이름");group.setHint("작품 이름");form.addView(title);form.addView(group);new AlertDialog.Builder(this).setTitle("작품 / 권 편집").setView(form).setNegativeButton("취소",null).setPositiveButton("저장",(d,w)->{try{b.put("title",title.getText().toString());b.put("group",group.getText().toString());save();home();}catch(Exception ignored){}}).show();}
+  void edit(JSONObject b){LinearLayout form=new LinearLayout(this);form.setPadding(dp(18),0,dp(18),0);form.setOrientation(1);EditText title=new EditText(this),group=new EditText(this);title.setSingleLine(true);group.setSingleLine(true);title.setText(b.optString("title"));group.setText(b.optString("group"));title.setHint("권 이름");group.setHint("작품 이름");form.addView(title);form.addView(group);fontDialog().setTitle("작품 / 권 편집").setView(form).setNegativeButton("취소",null).setPositiveButton("저장",(d,w)->{try{b.put("title",title.getText().toString());b.put("group",group.getText().toString());save();home();}catch(Exception ignored){}}).show();}
   void exportOne(String id){exportId=id;JSONObject b=book(id);if(b==null)return;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_TITLE,b.optString("title")+".zip");startActivityForResult(i,EXPORT);}
   void copyOut(JSONObject b,Uri uri){File src=file(b);new Thread(()->{try(InputStream in=new FileInputStream(src);OutputStream out=getContentResolver().openOutputStream(uri)){byte[] buf=new byte[65536];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);runOnUiThread(()->toast("다운로드 완료"));}catch(Exception e){runOnUiThread(()->toast("다운로드 실패: "+e.getMessage()));}}).start();}
   void exportAll(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);startActivityForResult(i,EXPORT_ALL);}
