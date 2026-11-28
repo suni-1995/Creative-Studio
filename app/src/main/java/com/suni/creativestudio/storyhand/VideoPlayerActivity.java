@@ -20,7 +20,7 @@ import java.util.UUID;
 import java.util.Locale;
 
 /** Standalone foreground video playback. No project or music dependencies. */
-public class VideoPlayerActivity extends Activity {
+public class VideoPlayerActivity extends ViewerFontActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable hideControls = () -> setControlsVisible(false);
     private final Runnable progressTick = new Runnable() {
