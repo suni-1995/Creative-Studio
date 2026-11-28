@@ -27,7 +27,7 @@ import java.io.*;
 import java.util.UUID;
 
 /** Isolated local video library. No project data or ZIP backup integration. */
-public class VideoLibraryActivity extends Activity {
+public class VideoLibraryActivity extends ViewerFontActivity {
     private static final int PICK_VIDEO = 8401;
     private static final int EXPORT_VIDEO = 8402;
     private static final int EXPORT_FOLDER = 8403;
@@ -368,7 +368,7 @@ public class VideoLibraryActivity extends Activity {
     private void confirmSelectedDelete() {
         if(copying||exporting)return;
         if(selected.isEmpty()){toast("선택한 영상이 없습니다.");return;}
-        new AlertDialog.Builder(this).setTitle("선택 영상 삭제").setMessage(selected.size()+"개 선택 항목을 삭제할까요? 폴더 안의 영상도 모두 삭제됩니다. 원본은 삭제되지 않습니다.")
+        fontDialog().setTitle("선택 영상 삭제").setMessage(selected.size()+"개 선택 항목을 삭제할까요? 폴더 안의 영상도 모두 삭제됩니다. 원본은 삭제되지 않습니다.")
             .setNegativeButton("취소",null).setPositiveButton("삭제",(d,w)->{
                 int failures=0;
                 java.util.LinkedHashSet<String> targets=new java.util.LinkedHashSet<>();
@@ -470,7 +470,7 @@ public class VideoLibraryActivity extends Activity {
                 popup.getMenu().add("이름 수정").setOnMenuItemClickListener(menu -> { rename(id); return true; });
                 popup.getMenu().add("삭제").setOnMenuItemClickListener(menu -> { confirmDelete(id); return true; });
                 popup.getMenu().add("다운로드").setOnMenuItemClickListener(menu -> { chooseExportDestination(id); return true; });
-                popup.show();
+                showFontMenu(popup);
             });
         }
     }
@@ -482,14 +482,14 @@ public class VideoLibraryActivity extends Activity {
     private void editFolder(String id){
         if(copying||exporting)return;
         EditText input=new EditText(this);input.setSingleLine(true);if(id!=null)input.setText(folders.optString(id));
-        new AlertDialog.Builder(this).setTitle(id==null?"폴더 생성":"폴더 이름 수정").setView(input).setNegativeButton("취소",null).setPositiveButton("저장",(d,w)->{
+        fontDialog().setTitle(id==null?"폴더 생성":"폴더 이름 수정").setView(input).setNegativeButton("취소",null).setPositiveButton("저장",(d,w)->{
             String name=input.getText().toString().trim();if(name.isEmpty()||name.contains("/")||name.contains("\\")||name.equals(".")||name.equals("..")){toast("올바른 폴더 이름을 입력해 주세요.");return;}
             try{folders.put(id==null?UUID.randomUUID().toString():id,name);if(!saveFolders())toast("폴더 저장 실패");render();}catch(Exception e){toast("폴더 저장 실패");}
         }).show();
     }
     private void moveVideo(String id){
         ArrayList<String> ids=folderIds();ids.add(0,"");ArrayList<String> names=new ArrayList<>();for(String f:ids)names.add(f.isEmpty()?"폴더 없음":folders.optString(f));
-        new AlertDialog.Builder(this).setTitle("폴더 이동").setItems(names.toArray(new String[0]),(d,w)->{int i=indexOf(id);if(i<0)return;try{videos.optJSONObject(i).put("folder",ids.get(w));if(!save())toast("이동 저장 실패");render();}catch(Exception e){toast("이동 실패");}}).show();
+        fontDialog().setTitle("폴더 이동").setItems(names.toArray(new String[0]),(d,w)->{int i=indexOf(id);if(i<0)return;try{videos.optJSONObject(i).put("folder",ids.get(w));if(!save())toast("이동 저장 실패");render();}catch(Exception e){toast("이동 실패");}}).show();
     }
     private void addFolderRow(String id){
         String key="folder:"+id;LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(14),dp(8),dp(10),dp(8));row.setBackground(rounded(surface,selected.contains(key)?accent:stroke,16));
@@ -498,7 +498,7 @@ public class VideoLibraryActivity extends Activity {
         TextView label=text(folders.optString(id),17,foreground,true);label.setPadding(dp(8),0,dp(8),0);label.setMaxLines(2);label.setEllipsize(android.text.TextUtils.TruncateAt.END);row.addView(label,new LinearLayout.LayoutParams(0,-1,1));
         TextView count=text("영상 "+folderCount(id)+"개",12,secondary,false);count.setGravity(Gravity.CENTER_VERTICAL|Gravity.END);count.setSingleLine(true);row.addView(count,new LinearLayout.LayoutParams(-2,-1));
         View.OnClickListener open=v->{if(copying||exporting)return;if(selectionMode)toggleSelection(key);else{activeFolder=id;render();}};row.setOnClickListener(open);label.setOnClickListener(open);count.setOnClickListener(open);count.setOnLongClickListener(v->{toggleSelection(key);return true;});row.setOnLongClickListener(v->{toggleSelection(key);return true;});label.setOnLongClickListener(v->{toggleSelection(key);return true;});
-        TextView more=text("⋮",27,foreground,true);more.setGravity(Gravity.CENTER);row.addView(more,new LinearLayout.LayoutParams(dp(42),dp(48)));more.setOnClickListener(v->{if(copying||exporting)return;if(selectionMode){toggleSelection(key);return;}PopupMenu menu=new PopupMenu(this,more);menu.getMenu().add("이름 수정").setOnMenuItemClickListener(m->{editFolder(id);return true;});menu.getMenu().add("다운로드").setOnMenuItemClickListener(m->{if(folderCount(id)==0)toast("다운로드할 영상이 없습니다.");else chooseExportFolder(id);return true;});menu.getMenu().add("삭제").setOnMenuItemClickListener(m->{selected.clear();selected.add(key);selectionMode=true;render();confirmSelectedDelete();return true;});menu.show();});
+        TextView more=text("⋮",27,foreground,true);more.setGravity(Gravity.CENTER);row.addView(more,new LinearLayout.LayoutParams(dp(42),dp(48)));more.setOnClickListener(v->{if(copying||exporting)return;if(selectionMode){toggleSelection(key);return;}PopupMenu menu=new PopupMenu(this,more);menu.getMenu().add("이름 수정").setOnMenuItemClickListener(m->{editFolder(id);return true;});menu.getMenu().add("다운로드").setOnMenuItemClickListener(m->{if(folderCount(id)==0)toast("다운로드할 영상이 없습니다.");else chooseExportFolder(id);return true;});menu.getMenu().add("삭제").setOnMenuItemClickListener(m->{selected.clear();selected.add(key);selectionMode=true;render();confirmSelectedDelete();return true;});showFontMenu(menu);});
     }
     private void chooseExportFolder() { chooseExportFolder(activeFolder.isEmpty()?null:activeFolder); }
     private void chooseExportFolder(String scope) {
@@ -650,7 +650,7 @@ public class VideoLibraryActivity extends Activity {
         EditText edit = new EditText(this);
         edit.setSingleLine(true);
         edit.setText(videos.optJSONObject(i).optString("title"));
-        new AlertDialog.Builder(this).setTitle("영상 제목 수정").setView(edit)
+        fontDialog().setTitle("영상 제목 수정").setView(edit)
             .setNegativeButton("취소", null).setPositiveButton("저장", (d, w) -> {
                 String value = edit.getText().toString().trim();
                 if (value.isEmpty()) { toast("제목을 입력해 주세요."); return; }
@@ -660,7 +660,7 @@ public class VideoLibraryActivity extends Activity {
     }
 
     private void confirmDelete(String id) {
-        new AlertDialog.Builder(this).setTitle("영상 삭제")
+        fontDialog().setTitle("영상 삭제")
             .setMessage("앱에 복사된 영상 파일을 삭제합니다. 원본 파일은 삭제하지 않습니다.")
             .setNegativeButton("취소", null).setPositiveButton("삭제", (d, w) -> delete(id)).show();
     }
@@ -682,7 +682,7 @@ public class VideoLibraryActivity extends Activity {
     @Override public void onBackPressed() {
         if(exporting){toast("다운로드가 완료될 때까지 기다려 주세요.");return;}
         if (copying) {
-            new AlertDialog.Builder(this).setMessage("영상 등록을 취소하시겠습니까?")
+            fontDialog().setMessage("영상 등록을 취소하시겠습니까?")
                 .setNegativeButton("계속 등록", null)
                 .setPositiveButton("등록 취소", (d, w) -> cancelled = true).show();
             return;
