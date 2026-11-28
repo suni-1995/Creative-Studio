@@ -1238,11 +1238,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void requestProjectAlarmNotificationPermission() { if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},REQ_PROJECT_ALARM_NOTIFICATION)); }
         @JavascriptInterface
         public void openDocumentLibrary() {
-            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, DocumentLibraryActivity.class)));
+            runOnUiThread(() -> webView.evaluateJavascript("localStorage.getItem('creativeStudioStoryHandFont') || 'system'", value -> {
+                String key="system";
+                try { Object parsed=new org.json.JSONTokener(value).nextValue(); if(parsed instanceof String)key=(String)parsed; } catch(Exception ignored){}
+                getSharedPreferences("creative_studio_prefs",MODE_PRIVATE).edit().putString("viewer_font",key).apply();
+                startActivity(new Intent(MainActivity.this, DocumentLibraryActivity.class));
+            }));
         }
         @JavascriptInterface
         public void openVideoLibrary() {
-            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, VideoLibraryActivity.class)));
+            runOnUiThread(() -> webView.evaluateJavascript("localStorage.getItem('creativeStudioStoryHandFont') || 'system'", value -> {
+                String key="system";
+                try { Object parsed=new org.json.JSONTokener(value).nextValue(); if(parsed instanceof String)key=(String)parsed; } catch(Exception ignored){}
+                getSharedPreferences("creative_studio_prefs",MODE_PRIVATE).edit().putString("viewer_font",key).apply();
+                startActivity(new Intent(MainActivity.this, VideoLibraryActivity.class));
+            }));
         }
 
         @JavascriptInterface
